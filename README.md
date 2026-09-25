@@ -4,7 +4,9 @@ Eine Website, auf der die Familie gemeinsam ihren Stammbaum ansieht und pflegt.
 
 - Personen mit Vorname, Nachname, Mädchenname, Geschlecht, Geburts- und Todesdatum, Foto und Notizen anlegen und bearbeiten
 - Eltern, Kinder und Partner:innen verbinden, auch direkt beim Anlegen („+ Neue Person als Kind“)
-- Stammbaum als Grafik, Generation für Generation, mit Zoom
+- Stammbaum als Grafik von oben nach unten: Eltern stehen mittig über ihren Kindern, angeheiratete Familien daneben, ohne sich kreuzende Linien; mit Zoom
+- Plausibilitätsprüfungen (z. B. kann der Vater nicht gleichzeitig der Sohn sein) und Hinweise bei unpassenden Daten
+- Vorschläge zum Bestätigen oder Ablehnen, z. B. die beiden Eltern eines Kindes als Partner zu verbinden
 - Verwandtschaftsgrad zwischen zwei beliebigen Personen berechnen (z. B. „Emre ist der Cousin 1. Grades von Cemre“), inklusive Schwieger-, Stief- und angeheirateter Verwandtschaft
 - Anmeldung per E-Mail-Link, nur für eingeladene Familienmitglieder
 - Oberfläche auf Deutsch oder Türkisch, mit türkischen Verwandtschaftsbegriffen (Amca, Dayı, Hala, Teyze, Babaanne, Anneanne, Enişte, Yenge …)
@@ -39,6 +41,7 @@ Für die lokale Entwicklung mit echten Daten `.env.example` nach `.env` kopieren
 
 - Fotos können nach dem Auswählen quadratisch zugeschnitten werden und werden vor dem Hochladen auf höchstens 600 Pixel verkleinert. Sie liegen unter einer zufälligen Adresse, die nur kennt, wer eingeloggt ist, sind aber technisch ohne Login abrufbar, wenn jemand die Adresse hat.
 - Jede Person kann höchstens zwei Elternteile haben, und niemand kann sein eigener Vorfahre werden.
+- Abgelehnte Vorschläge merkt sich der jeweilige Browser.
 - GitHub Pages ist für öffentliche Repositories kostenlos. Die Familiendaten liegen nicht im Repository, sondern bei Supabase.
 
 ## Entwicklung

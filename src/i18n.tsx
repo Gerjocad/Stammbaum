@@ -81,6 +81,23 @@ const de = {
   errExists: 'Diese Verbindung gibt es schon.',
   errTwoParents: 'Diese Person hat schon zwei Elternteile.',
   errCycle: 'Das geht nicht: Die Person wäre dann ihr eigener Vorfahre.',
+  errParentIsChild: (a: string, b: string) =>
+    `${a} ist bereits ein Kind von ${b} und kann nicht gleichzeitig Elternteil von ${b} sein.`,
+  errPartnerAsParent: (a: string, b: string) => `${a} und ${b} sind Partner und können nicht Elternteil und Kind sein.`,
+  errSiblingAsParent: (a: string, b: string) => `${a} und ${b} sind Geschwister und können nicht Elternteil und Kind sein.`,
+  errAncestorAsPartner: (a: string, b: string) =>
+    `${a} und ${b} stammen direkt voneinander ab und können nicht als Partner verbunden werden.`,
+  warnParentYounger: (a: string, b: string) => `${a} ist laut Geburtsdatum jünger als ${b}.`,
+  warnParentTooYoung: (a: string, age: number, b: string) => `${a} wäre bei der Geburt von ${b} erst ${age} Jahre alt gewesen.`,
+  warnParentDead: (a: string, b: string) => `${a} ist laut Todesdatum schon vor der Geburt von ${b} gestorben.`,
+  warnSiblingsAsPartners: (a: string, b: string) => `${a} und ${b} sind Geschwister.`,
+  saveAnyway: 'Trotzdem speichern?',
+  suggestPartners: (a: string, b: string, c: string) =>
+    `${a} und ${b} sind beide Eltern von ${c}. Sollen sie als Partner verbunden werden?`,
+  suggestParent: (a: string, c: string) => `Ist ${a} auch ein Elternteil von ${c}?`,
+  suggestYes: 'Ja, verbinden',
+  suggestNo: 'Nein',
+  suggestCount: (i: number, n: number) => `Vorschlag ${i} von ${n}`,
 
   // Verwandtschaft
   kinshipHint: 'Wähle zwei Personen hier aus oder klicke sie nacheinander im Baum an.',
@@ -174,6 +191,22 @@ const tr: Strings = {
   errExists: 'Bu bağlantı zaten var.',
   errTwoParents: 'Bu kişinin zaten iki ebeveyni var.',
   errCycle: 'Bu olmaz: Kişi kendi atası olurdu.',
+  errParentIsChild: (a: string, b: string) =>
+    `${a} zaten ${b} kişisinin çocuğu, aynı anda ${b} kişisinin ebeveyni olamaz.`,
+  errPartnerAsParent: (a: string, b: string) => `${a} ve ${b} eş, ebeveyn ve çocuk olamazlar.`,
+  errSiblingAsParent: (a: string, b: string) => `${a} ve ${b} kardeş, ebeveyn ve çocuk olamazlar.`,
+  errAncestorAsPartner: (a: string, b: string) => `${a} ve ${b} doğrudan birbirinin soyundan, eş olarak bağlanamazlar.`,
+  warnParentYounger: (a: string, b: string) => `Doğum tarihine göre ${a}, ${b} kişisinden daha genç.`,
+  warnParentTooYoung: (a: string, age: number, b: string) => `${b} doğduğunda ${a} sadece ${age} yaşında olurdu.`,
+  warnParentDead: (a: string, b: string) => `Ölüm tarihine göre ${a}, ${b} doğmadan önce vefat etmiş.`,
+  warnSiblingsAsPartners: (a: string, b: string) => `${a} ve ${b} kardeş.`,
+  saveAnyway: 'Yine de kaydedilsin mi?',
+  suggestPartners: (a: string, b: string, c: string) =>
+    `${a} ve ${b}, ${c} kişisinin ebeveynleri. Eş olarak bağlansınlar mı?`,
+  suggestParent: (a: string, c: string) => `${a} da ${c} kişisinin ebeveyni mi?`,
+  suggestYes: 'Evet, bağla',
+  suggestNo: 'Hayır',
+  suggestCount: (i: number, n: number) => `Öneri ${i} / ${n}`,
 
   kinshipHint: 'İki kişiyi buradan seç ya da ağaçta sırayla üzerlerine tıkla.',
   person1: '1. kişi',
@@ -241,5 +274,6 @@ export function errorText(err: unknown, t: Strings): string {
   if (msg === 'storage-full') return t.errStorageFull;
   if (msg === 'image-failed') return t.errImage;
   if (msg === 'schema-outdated') return t.errSchemaOutdated;
+  if (msg === 'cancelled') return '';
   return msg;
 }
