@@ -1,7 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLang } from '../i18n';
 import { CARD_H, CARD_W, computeLayout } from '../layout';
 import { fullName, lifeSpan, type FamilyData } from '../types';
+
+const MIN_ZOOM = 0.2;
+const MAX_ZOOM = 2.5;
 
 interface Props {
   data: FamilyData;
@@ -14,6 +17,88 @@ export function Tree({ data, selectedId, marked, onSelect }: Props) {
   const layout = useMemo(() => computeLayout(data), [data]);
   const [zoom, setZoom] = useState(1);
   const { t } = useLang();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
+  // Nach einer Zoom-Änderung so scrollen, dass der Punkt unter den Fingern stehen bleibt.
+  const anchor = useRef<{ x: number; y: number; cx: number; cy: number } | null>(null);
+
+  /** Zoomt auf `next`, wobei der Bildschirmpunkt (px, py) im Scrollbereich fest bleibt. */
+  const zoomAt = (next: number, px: number, py: number) => {
+    const el = scrollRef.current;
+    const z = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next));
+    if (!el || z === zoomRef.current) return;
+    anchor.current = {
+      x: px,
+      y: py,
+      cx: (el.scrollLeft + px) / zoomRef.current,
+      cy: (el.scrollTop + py) / zoomRef.current,
+    };
+    zoomRef.current = z;
+    setZoom(z);
+  };
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    const a = anchor.current;
+    if (!el || !a) return;
+    el.scrollLeft = a.cx * zoom - a.x;
+    el.scrollTop = a.cy * zoom - a.y;
+    anchor.current = null;
+  }, [zoom]);
+
+  const hasNodes = layout.nodes.length > 0;
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let start: { dist: number; zoom: number } | null = null;
+    const local = (x: number, y: number) => {
+      const r = el.getBoundingClientRect();
+      return [x - r.left, y - r.top] as const;
+    };
+    const pinch = (e: TouchEvent) => {
+      const [a, b] = [e.touches[0], e.touches[1]];
+      const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      const [mx, my] = local((a.clientX + b.clientX) / 2, (a.clientY + b.clientY) / 2);
+      return { dist, mx, my };
+    };
+    const onStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) start = { dist: pinch(e).dist, zoom: zoomRef.current };
+    };
+    const onMove = (e: TouchEvent) => {
+      if (e.touches.length !== 2 || !start) return;
+      e.preventDefault();
+      const p = pinch(e);
+      zoomAt(start.zoom * (p.dist / start.dist), p.mx, p.my);
+    };
+    const onEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) start = null;
+    };
+    // Trackpad-Pinch am Computer kommt als Mausrad mit gedrückter Strg-Taste an.
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      const [x, y] = local(e.clientX, e.clientY);
+      zoomAt(zoomRef.current * Math.exp(-e.deltaY / 200), x, y);
+    };
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', onEnd);
+    el.addEventListener('touchcancel', onEnd);
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      el.removeEventListener('touchstart', onStart);
+      el.removeEventListener('touchmove', onMove);
+      el.removeEventListener('touchend', onEnd);
+      el.removeEventListener('touchcancel', onEnd);
+      el.removeEventListener('wheel', onWheel);
+    };
+  }, [hasNodes]);
+
+  const zoomButton = (factor: number) => {
+    const el = scrollRef.current;
+    zoomAt(zoomRef.current * factor, (el?.clientWidth ?? 0) / 2, (el?.clientHeight ?? 0) / 2);
+  };
   const byId = useMemo(() => new Map(data.persons.map((p) => [p.id, p])), [data]);
 
   if (!layout.nodes.length) {
@@ -28,15 +113,15 @@ export function Tree({ data, selectedId, marked, onSelect }: Props) {
   return (
     <div className="tree-wrap">
       <div className="zoom">
-        <button onClick={() => setZoom((z) => Math.max(0.3, z - 0.1))} aria-label={t.zoomOut}>
+        <button onClick={() => zoomButton(1 / 1.2)} aria-label={t.zoomOut}>
           −
         </button>
         <span>{Math.round(zoom * 100)} %</span>
-        <button onClick={() => setZoom((z) => Math.min(2, z + 0.1))} aria-label={t.zoomIn}>
+        <button onClick={() => zoomButton(1.2)} aria-label={t.zoomIn}>
           +
         </button>
       </div>
-      <div className="tree-scroll">
+      <div className="tree-scroll" ref={scrollRef}>
         <div
           className="tree"
           style={{ width: layout.width * zoom, height: layout.height * zoom }}
