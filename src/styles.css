@@ -216,3 +216,15 @@ aside { position: relative; }
 .members li > div:first-child > div { overflow: hidden; text-overflow: ellipsis; }
 .notice.birthday { display: flex; align-items: center; gap: 8px; }
 .login .link { margin-top: 12px; }
+
+/* Geschlecht als Auswahlknöpfe */
+fieldset.gender { border: none; padding: 0; margin: 0 0 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+fieldset.gender legend { padding: 0; margin-bottom: 4px; font-size: 0.9rem; }
+fieldset.gender label {
+  display: flex; align-items: center; gap: 6px; margin: 0; padding: 8px 12px; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+}
+fieldset.gender label.g-w:has(input:checked) { background: var(--w); border-color: var(--accent); }
+fieldset.gender label.g-m:has(input:checked) { background: var(--m); border-color: var(--accent); }
+fieldset.gender label.g-d:has(input:checked) { background: var(--d); border-color: var(--accent); }
+fieldset.gender input { margin: 0; width: auto; accent-color: var(--accent); }

@@ -169,6 +169,13 @@ export default function App() {
     }
   };
 
+  // Beim Hinzufügen eines Partners das andere Geschlecht vorauswählen.
+  const partnerGender = (p: Extract<Panel, { kind: 'new' }>) => {
+    if (p.linkTo?.relation !== 'partner') return undefined;
+    const g = byId.get(p.linkTo.personId)?.gender;
+    return g === 'w' ? 'm' : g === 'm' ? 'w' : undefined;
+  };
+
   const newTitle = (p: Extract<Panel, { kind: 'new' }>) => {
     if (!p.linkTo) return t.newPerson;
     const name = byId.get(p.linkTo.personId)?.first_name ?? '';
@@ -218,6 +225,7 @@ export default function App() {
       <PersonForm
         key={JSON.stringify(panel.linkTo ?? null)}
         title={newTitle(panel)}
+        defaultGender={partnerGender(panel)}
         onSave={savePerson}
         onCancel={() => setPanel(panel.linkTo ? { kind: 'view', id: panel.linkTo.personId } : { kind: 'none' })}
       />
