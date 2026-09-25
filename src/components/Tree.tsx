@@ -74,19 +74,58 @@ export function Tree({ data, selectedId, marked, onSelect }: Props) {
     const onEnd = (e: TouchEvent) => {
       if (e.touches.length < 2) start = null;
     };
-    // Trackpad-Pinch am Computer kommt als Mausrad mit gedrückter Strg-Taste an.
+    // Mausrad (und Trackpad-Pinch, der als Rad mit Strg ankommt) zoomt um den Mauszeiger.
     const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey) return;
       e.preventDefault();
       const [x, y] = local(e.clientX, e.clientY);
-      zoomAt(zoomRef.current * Math.exp(-e.deltaY / 200), x, y);
+      const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+      zoomAt(zoomRef.current * Math.exp(-dy / (e.ctrlKey ? 100 : 400)), x, y);
+    };
+
+    // Mit gedrückter linker Maustaste ziehen verschiebt den Baum.
+    let drag: { x: number; y: number; left: number; top: number; moved: boolean } | null = null;
+    const onMouseDown = (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      drag = { x: e.clientX, y: e.clientY, left: el.scrollLeft, top: el.scrollTop, moved: false };
+    };
+    const onMouseMove = (e: MouseEvent) => {
+      if (!drag) return;
+      const dx = e.clientX - drag.x;
+      const dy = e.clientY - drag.y;
+      if (!drag.moved && Math.hypot(dx, dy) < 4) return;
+      if (!drag.moved) {
+        drag.moved = true;
+        el.classList.add('dragging');
+      }
+      e.preventDefault();
+      el.scrollLeft = drag.left - dx;
+      el.scrollTop = drag.top - dy;
+    };
+    const onMouseUp = () => {
+      if (drag?.moved) {
+        el.classList.remove('dragging');
+        // Den Klick nach dem Ziehen schlucken, damit keine Person ausgewählt wird.
+        const swallow = (ev: MouseEvent) => {
+          ev.stopPropagation();
+          ev.preventDefault();
+        };
+        el.addEventListener('click', swallow, { capture: true, once: true });
+        setTimeout(() => el.removeEventListener('click', swallow, { capture: true }), 0);
+      }
+      drag = null;
     };
     el.addEventListener('touchstart', onStart, { passive: true });
     el.addEventListener('touchmove', onMove, { passive: false });
     el.addEventListener('touchend', onEnd);
     el.addEventListener('touchcancel', onEnd);
     el.addEventListener('wheel', onWheel, { passive: false });
+    el.addEventListener('mousedown', onMouseDown);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
     return () => {
+      el.removeEventListener('mousedown', onMouseDown);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
       el.removeEventListener('touchstart', onStart);
       el.removeEventListener('touchmove', onMove);
       el.removeEventListener('touchend', onEnd);
