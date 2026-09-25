@@ -1,0 +1,124 @@
+import { useState, type FormEvent } from 'react';
+import type { Gender, NewPerson, Person } from '../types';
+
+interface Props {
+  initial?: Person;
+  title: string;
+  onSave: (person: NewPerson & { id?: string }, photo: File | null) => Promise<void>;
+  onCancel: () => void;
+}
+
+export function PersonForm({ initial, title, onSave, onCancel }: Props) {
+  const [firstName, setFirstName] = useState(initial?.first_name ?? '');
+  const [lastName, setLastName] = useState(initial?.last_name ?? '');
+  const [gender, setGender] = useState<Gender>(initial?.gender ?? 'w');
+  const [birth, setBirth] = useState(initial?.birth_date ?? '');
+  const [death, setDeath] = useState(initial?.death_date ?? '');
+  const [notes, setNotes] = useState(initial?.notes ?? '');
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [removePhoto, setRemovePhoto] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const preview = photo ? URL.createObjectURL(photo) : removePhoto ? null : initial?.photo_url ?? null;
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!firstName.trim()) return setError('Bitte einen Vornamen eingeben.');
+    if (birth && death && death < birth) return setError('Das Todesdatum liegt vor dem Geburtsdatum.');
+    setBusy(true);
+    setError(null);
+    try {
+      await onSave(
+        {
+          id: initial?.id,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          gender,
+          birth_date: birth || null,
+          death_date: death || null,
+          notes: notes.trim() || null,
+          photo_url: removePhoto ? null : initial?.photo_url ?? null,
+        },
+        photo,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className="panel form" onSubmit={submit}>
+      <h2>{title}</h2>
+      <div className="photo-row">
+        <div className="avatar big">{preview ? <img src={preview} alt="" /> : <span>?</span>}</div>
+        <div className="photo-buttons">
+          <label className="button secondary">
+            Foto wählen
+            <input
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => {
+                setPhoto(e.target.files?.[0] ?? null);
+                setRemovePhoto(false);
+              }}
+            />
+          </label>
+          {preview && (
+            <button
+              type="button"
+              className="link"
+              onClick={() => {
+                setPhoto(null);
+                setRemovePhoto(true);
+              }}
+            >
+              Foto entfernen
+            </button>
+          )}
+        </div>
+      </div>
+      <label>
+        Vorname
+        <input value={firstName} onChange={(e) => setFirstName(e.target.value)} autoFocus />
+      </label>
+      <label>
+        Nachname
+        <input value={lastName} onChange={(e) => setLastName(e.target.value)} />
+      </label>
+      <label>
+        Geschlecht
+        <select value={gender} onChange={(e) => setGender(e.target.value as Gender)}>
+          <option value="w">weiblich</option>
+          <option value="m">männlich</option>
+          <option value="d">divers / unbekannt</option>
+        </select>
+      </label>
+      <div className="two">
+        <label>
+          Geburtsdatum
+          <input type="date" value={birth} onChange={(e) => setBirth(e.target.value)} />
+        </label>
+        <label>
+          Todesdatum
+          <input type="date" value={death} onChange={(e) => setDeath(e.target.value)} />
+        </label>
+      </div>
+      <label>
+        Notizen
+        <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+      </label>
+      {error && <p className="error">{error}</p>}
+      <div className="actions">
+        <button type="submit" disabled={busy}>
+          {busy ? 'Speichern …' : 'Speichern'}
+        </button>
+        <button type="button" className="secondary" onClick={onCancel} disabled={busy}>
+          Abbrechen
+        </button>
+      </div>
+    </form>
+  );
+}
