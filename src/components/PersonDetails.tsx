@@ -68,6 +68,9 @@ export function PersonDetails({ person, data, onEdit, onDelete, onSelect, onAddN
         </div>
         <div>
           <h2>{fullName(person)}</h2>
+          {person.birth_name && person.birth_name !== person.last_name && (
+            <p className="muted">{t.bornAs(person.birth_name)}</p>
+          )}
           <p className="muted">{lifeSpan(person)}</p>
         </div>
       </div>

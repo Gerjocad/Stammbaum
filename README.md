@@ -2,7 +2,7 @@
 
 Eine Website, auf der die Familie gemeinsam ihren Stammbaum ansieht und pflegt.
 
-- Personen mit Vorname, Nachname, Geschlecht, Geburts- und Todesdatum, Foto und Notizen anlegen und bearbeiten
+- Personen mit Vorname, Nachname, Mädchenname, Geschlecht, Geburts- und Todesdatum, Foto und Notizen anlegen und bearbeiten
 - Eltern, Kinder und Partner:innen verbinden, auch direkt beim Anlegen („+ Neue Person als Kind“)
 - Stammbaum als Grafik, Generation für Generation, mit Zoom
 - Verwandtschaftsgrad zwischen zwei beliebigen Personen berechnen (z. B. „Emre ist der Cousin 1. Grades von Cemre“), inklusive Schwieger-, Stief- und angeheirateter Verwandtschaft

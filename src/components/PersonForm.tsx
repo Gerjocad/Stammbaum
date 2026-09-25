@@ -13,6 +13,7 @@ export function PersonForm({ initial, title, onSave, onCancel }: Props) {
   const { t } = useLang();
   const [firstName, setFirstName] = useState(initial?.first_name ?? '');
   const [lastName, setLastName] = useState(initial?.last_name ?? '');
+  const [birthName, setBirthName] = useState(initial?.birth_name ?? '');
   const [gender, setGender] = useState<Gender>(initial?.gender ?? 'w');
   const [birth, setBirth] = useState(initial?.birth_date ?? '');
   const [death, setDeath] = useState(initial?.death_date ?? '');
@@ -36,6 +37,7 @@ export function PersonForm({ initial, title, onSave, onCancel }: Props) {
           id: initial?.id,
           first_name: firstName.trim(),
           last_name: lastName.trim(),
+          birth_name: birthName.trim() || null,
           gender,
           birth_date: birth || null,
           death_date: death || null,
@@ -89,6 +91,10 @@ export function PersonForm({ initial, title, onSave, onCancel }: Props) {
       <label>
         {t.lastName}
         <input value={lastName} onChange={(e) => setLastName(e.target.value)} />
+      </label>
+      <label>
+        {t.birthName}
+        <input value={birthName} onChange={(e) => setBirthName(e.target.value)} />
       </label>
       <label>
         {t.gender}

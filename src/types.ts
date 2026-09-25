@@ -4,6 +4,8 @@ export interface Person {
   id: string;
   first_name: string;
   last_name: string;
+  /** Geburts- bzw. Mädchenname, falls anders als der heutige Nachname. */
+  birth_name?: string | null;
   birth_date: string | null; // ISO-Datum, z. B. "1950-03-21"
   death_date: string | null;
   gender: Gender;
