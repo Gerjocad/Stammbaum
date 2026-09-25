@@ -3,7 +3,7 @@ import { KinshipPanel } from './components/KinshipPanel';
 import { Login } from './components/Login';
 import { PersonDetails, type RelationKind } from './components/PersonDetails';
 import { PersonForm } from './components/PersonForm';
-import { KinshipIcon, LogOutIcon, UserPlusIcon } from './components/Icons';
+import { CloseIcon, KinshipIcon, LogOutIcon, UserPlusIcon } from './components/Icons';
 import { Settings } from './components/Settings';
 import { Tree } from './components/Tree';
 import { useLang, type Strings } from './i18n';
@@ -90,6 +90,15 @@ export default function App() {
       setError(errorText(err, t));
     }
   };
+
+  const closePanel = () => setPanel({ kind: 'none' });
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPanel({ kind: 'none' });
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   if (email === undefined) return <div className="loading">{t.loading}</div>;
   if (email === null) return <Login onSignIn={(e) => store.signIn(e)} />;
@@ -192,12 +201,12 @@ export default function App() {
       <header>
         <h1>{t.appTitle}</h1>
         <div className="header-actions">
-          <button className="icon" onClick={() => setPanel({ kind: 'new' })} title={t.addPerson} aria-label={t.addPerson}>
+          <button className="icon" onClick={() => (panel.kind === 'new' ? closePanel() : setPanel({ kind: 'new' }))} title={t.addPerson} aria-label={t.addPerson}>
             <UserPlusIcon />
           </button>
           <button
             className="secondary icon"
-            onClick={() => setPanel({ kind: 'kinship' })}
+            onClick={() => (panel.kind === 'kinship' ? closePanel() : setPanel({ kind: 'kinship' }))}
             disabled={data.persons.length < 2}
             title={t.kinship}
             aria-label={t.kinship}
@@ -234,7 +243,14 @@ export default function App() {
           marked={panel.kind === 'kinship' ? [kinA, kinB].filter(Boolean) : []}
           onSelect={selectInTree}
         />
-        {side && <aside>{side}</aside>}
+        {side && (
+          <aside>
+            <button className="secondary icon close-side" onClick={closePanel} title={t.close} aria-label={t.close}>
+              <CloseIcon />
+            </button>
+            {side}
+          </aside>
+        )}
       </main>
     </div>
   );

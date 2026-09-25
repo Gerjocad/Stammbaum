@@ -4,6 +4,7 @@ create table if not exists public.persons (
   id uuid primary key default gen_random_uuid(),
   first_name text not null,
   last_name text not null default '',
+  birth_name text,
   birth_date date,
   death_date date,
   gender text not null default 'd' check (gender in ('m', 'w', 'd')),
@@ -45,3 +46,6 @@ create policy "Familie ändert Fotos" on storage.objects for update to authentic
   using (bucket_id = 'photos');
 create policy "Familie löscht Fotos" on storage.objects for delete to authenticated
   using (bucket_id = 'photos');
+
+-- Nachträge für bereits eingerichtete Datenbanken (mehrfaches Ausführen schadet nicht):
+alter table public.persons add column if not exists birth_name text;

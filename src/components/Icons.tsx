@@ -34,6 +34,12 @@ export const LogOutIcon = () => (
   </svg>
 );
 
+export const CloseIcon = () => (
+  <svg {...base}>
+    <path d="M18 6 6 18M6 6l12 12" />
+  </svg>
+);
+
 export const SunIcon = () => (
   <svg {...base}>
     <circle cx="12" cy="12" r="4" />
