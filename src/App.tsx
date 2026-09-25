@@ -3,20 +3,25 @@ import { KinshipPanel } from './components/KinshipPanel';
 import { Login } from './components/Login';
 import { PersonDetails, type RelationKind } from './components/PersonDetails';
 import { PersonForm } from './components/PersonForm';
-import { CloseIcon, KinshipIcon, LogOutIcon, UserPlusIcon } from './components/Icons';
+import { CakeIcon, CloseIcon, KinshipIcon, LogOutIcon, ShieldIcon, UserPlusIcon } from './components/Icons';
+import { MembersPanel } from './components/MembersPanel';
+import { OccasionsPanel } from './components/OccasionsPanel';
 import { Settings } from './components/Settings';
 import { Tree } from './components/Tree';
 import { errorText, useLang, type Strings } from './i18n';
+import { upcomingOccasions } from './dates';
 import { checkPersonDates, checkRelationship, suggestions, type Findings } from './checks';
 import { createStore } from './store';
-import { fullName, type FamilyData, type NewPerson, type NewRelationship, type Person } from './types';
+import { fullName, type FamilyData, type NewPerson, type NewRelationship, type Person, type Profile } from './types';
 
 type Panel =
   | { kind: 'none' }
   | { kind: 'view'; id: string }
   | { kind: 'edit'; id: string }
   | { kind: 'new'; linkTo?: { relation: RelationKind; personId: string } }
-  | { kind: 'kinship' };
+  | { kind: 'kinship' }
+  | { kind: 'occasions' }
+  | { kind: 'members' };
 
 /** Baut die Beziehung "other ist <relation> von person". */
 function toRelationship(relation: RelationKind, personId: string, otherId: string): NewRelationship {
@@ -51,6 +56,7 @@ export default function App() {
   const [kinA, setKinA] = useState('');
   const [kinB, setKinB] = useState('');
   const [dismissed, setDismissed] = useState(loadDismissed);
+  const [profile, setProfile] = useState<Profile | null>(null);
 
   const reload = useCallback(async () => {
     try {
@@ -71,6 +77,18 @@ export default function App() {
     if (email) void reload();
   }, [email, reload]);
 
+  useEffect(() => {
+    if (!email) return setProfile(null);
+    store
+      .getProfile()
+      .then(setProfile)
+      .catch((err) => {
+        // Ohne Profil-Tabelle (Skript noch nicht ausgeführt) gelten die alten Regeln: alle dürfen bearbeiten.
+        setProfile({ id: '', email, name: '', role: 'editor' });
+        setError(errorText(err, t));
+      });
+  }, [email, store, t]);
+
   const run = async (fn: () => Promise<unknown>) => {
     try {
       await fn();
@@ -90,7 +108,10 @@ export default function App() {
   }, []);
 
   if (email === undefined) return <div className="loading">{t.loading}</div>;
-  if (email === null) return <Login onSignIn={(e) => store.signIn(e)} />;
+  if (email === null) return <Login onSignIn={(e) => store.signIn(e)} onRegister={(e, n) => store.register(e, n)} />;
+  if (!profile) return <div className="loading">{t.loading}</div>;
+  const canEdit = profile.role !== 'viewer';
+  const isAdmin = profile.role === 'admin';
 
   const byId = new Map(data.persons.map((p) => [p.id, p]));
   const selectedId = panel.kind === 'view' || panel.kind === 'edit' ? panel.id : null;
@@ -130,7 +151,7 @@ export default function App() {
     setPanel({ kind: 'view', id: saved.id });
   }
 
-  const pending = suggestions(data, t).filter((s) => !dismissed.has(s.key));
+  const pending = (canEdit ? suggestions(data, t) : []).filter((s) => !dismissed.has(s.key));
   // Vorschläge zur gerade geöffneten Person zuerst.
   pending.sort(
     (a, b) =>
@@ -162,6 +183,7 @@ export default function App() {
         key={person.id}
         person={person}
         data={data}
+        canEdit={canEdit}
         onEdit={() => setPanel({ kind: 'edit', id: person.id })}
         onSelect={(id) => setPanel({ kind: 'view', id })}
         onAddNew={(relation) => setPanel({ kind: 'new', linkTo: { relation, personId: person.id } })}
@@ -180,7 +202,7 @@ export default function App() {
         }
       />
     );
-  } else if (panel.kind === 'edit' && byId.has(panel.id)) {
+  } else if (panel.kind === 'edit' && canEdit && byId.has(panel.id)) {
     const person = byId.get(panel.id)!;
     side = (
       <PersonForm
@@ -191,7 +213,7 @@ export default function App() {
         onCancel={() => setPanel({ kind: 'view', id: person.id })}
       />
     );
-  } else if (panel.kind === 'new') {
+  } else if (panel.kind === 'new' && canEdit) {
     side = (
       <PersonForm
         key={JSON.stringify(panel.linkTo ?? null)}
@@ -211,25 +233,42 @@ export default function App() {
         onClose={() => setPanel({ kind: 'none' })}
       />
     );
+  } else if (panel.kind === 'occasions') {
+    side = <OccasionsPanel persons={data.persons} onSelect={(id) => setPanel({ kind: 'view', id })} />;
+  } else if (panel.kind === 'members' && isAdmin) {
+    side = <MembersPanel store={store} me={profile} />;
   }
+  const toggle = (kind: 'new' | 'kinship' | 'occasions' | 'members') =>
+    panel.kind === kind ? closePanel() : setPanel({ kind });
+  const birthdaysToday = upcomingOccasions(data.persons).filter((o) => o.kind === 'birthday' && o.days === 0);
 
   return (
     <div className="app">
       <header>
         <h1>{t.appTitle}</h1>
         <div className="header-actions">
-          <button className="icon" onClick={() => (panel.kind === 'new' ? closePanel() : setPanel({ kind: 'new' }))} title={t.addPerson} aria-label={t.addPerson}>
-            <UserPlusIcon />
+          {canEdit && (
+            <button className="icon" onClick={() => toggle('new')} title={t.addPerson} aria-label={t.addPerson}>
+              <UserPlusIcon />
+            </button>
+          )}
+          <button className="secondary icon" onClick={() => toggle('occasions')} title={t.occasions} aria-label={t.occasions}>
+            <CakeIcon />
           </button>
           <button
             className="secondary icon"
-            onClick={() => (panel.kind === 'kinship' ? closePanel() : setPanel({ kind: 'kinship' }))}
+            onClick={() => toggle('kinship')}
             disabled={data.persons.length < 2}
             title={t.kinship}
             aria-label={t.kinship}
           >
             <KinshipIcon />
           </button>
+          {isAdmin && store.mode === 'supabase' && (
+            <button className="secondary icon" onClick={() => toggle('members')} title={t.members} aria-label={t.members}>
+              <ShieldIcon />
+            </button>
+          )}
           <Settings />
           {store.mode === 'supabase' && (
             <button
@@ -248,6 +287,12 @@ export default function App() {
           {t.demoNotice}
         </div>
       )}
+      {!canEdit && <div className="notice">{t.viewerNotice}</div>}
+      {birthdaysToday.map((o) => (
+        <div key={o.person.id} className="notice birthday">
+          <CakeIcon /> {t.birthdayToday(fullName(o.person), o.years)}
+        </div>
+      ))}
       {error && (
         <div className="notice error" onClick={() => setError(null)}>
           {error} <span className="muted">{t.hide}</span>

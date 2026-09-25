@@ -29,6 +29,16 @@ export interface Relationship {
 
 export type NewRelationship = Omit<Relationship, 'id'>;
 
+/** viewer = nur ansehen, editor = bearbeiten, admin = bearbeiten und Rollen vergeben */
+export type Role = 'viewer' | 'editor' | 'admin';
+
+export interface Profile {
+  id: string;
+  email: string;
+  name: string;
+  role: Role;
+}
+
 export interface FamilyData {
   persons: Person[];
   relationships: Relationship[];

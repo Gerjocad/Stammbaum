@@ -107,6 +107,35 @@ const de = {
 
   // Anmeldung
   loginIntro: 'Melde dich mit deiner E-Mail-Adresse an. Du bekommst einen Link, mit dem du ohne Passwort hineinkommst.',
+  registerIntro:
+    'Neu hier? Registriere dich mit Namen und E-Mail-Adresse. Danach kannst du den Stammbaum ansehen; bearbeiten darfst du, sobald die Verwaltung es freigibt.',
+  name: 'Name',
+  register: 'Registrieren',
+  toRegister: 'Noch kein Konto? Registrieren',
+  toLogin: 'Schon registriert? Anmelden',
+  notRegistered: 'Zu dieser E-Mail-Adresse gibt es noch kein Konto. Bitte zuerst registrieren.',
+  signupsOff:
+    'Registrieren ist noch nicht freigeschaltet. Die Verwaltung muss in Supabase „Allow new users to sign up“ einschalten.',
+
+  // Rollen
+  viewerNotice: 'Du kannst den Stammbaum ansehen. Bearbeiten kannst du, sobald die Verwaltung es für dich freigibt.',
+  members: 'Familienmitglieder',
+  membersHint: 'Hier legst du fest, wer nur ansehen und wer auch bearbeiten darf.',
+  roleViewer: 'Nur ansehen',
+  roleEditor: 'Bearbeiten',
+  roleAdmin: 'Verwaltung',
+  you: '(du)',
+  noName: '(ohne Namen)',
+
+  // Geburtstage
+  occasions: 'Geburtstage und Gedenktage',
+  birthdayToday: (n: string, y: number) => `Heute hat ${n} Geburtstag und wird ${y}.`,
+  turns: (y: number) => `wird ${y}`,
+  memorial: (y: number) => `${y}. Todestag`,
+  today: 'heute',
+  tomorrow: 'morgen',
+  inDays: (d: number) => `in ${d} Tagen`,
+  noOccasions: 'Es sind noch keine Geburtsdaten eingetragen.',
   email: 'E-Mail',
   sendLink: 'Anmeldelink schicken',
   linkSent: (e: string) => `Wir haben dir einen Anmeldelink an ${e} geschickt. Öffne ihn auf diesem Gerät.`,
@@ -214,6 +243,32 @@ const tr: Strings = {
   close: 'Kapat',
 
   loginIntro: 'E-posta adresinle giriş yap. Şifresiz giriş için sana bir bağlantı gönderilir.',
+  registerIntro:
+    'Yeni misin? Adın ve e-posta adresinle kaydol. Sonra soy ağacını görebilirsin; yönetici izin verince düzenleyebilirsin.',
+  name: 'Ad Soyad',
+  register: 'Kaydol',
+  toRegister: 'Hesabın yok mu? Kaydol',
+  toLogin: 'Zaten kayıtlı mısın? Giriş yap',
+  notRegistered: 'Bu e-posta adresiyle henüz bir hesap yok. Lütfen önce kaydol.',
+  signupsOff: 'Kayıt henüz açık değil. Yöneticinin Supabase’de „Allow new users to sign up“ ayarını açması gerekiyor.',
+
+  viewerNotice: 'Soy ağacını görebilirsin. Yönetici izin verince düzenleyebileceksin.',
+  members: 'Aile üyeleri',
+  membersHint: 'Kimin sadece görebileceğini, kimin düzenleyebileceğini buradan belirlersin.',
+  roleViewer: 'Sadece görüntüle',
+  roleEditor: 'Düzenle',
+  roleAdmin: 'Yönetici',
+  you: '(sen)',
+  noName: '(isimsiz)',
+
+  occasions: 'Doğum günleri ve anma günleri',
+  birthdayToday: (n: string, y: number) => `Bugün ${n} kişisinin doğum günü, ${y} yaşına giriyor.`,
+  turns: (y: number) => `${y} yaşına giriyor`,
+  memorial: (y: number) => `${y}. ölüm yıl dönümü`,
+  today: 'bugün',
+  tomorrow: 'yarın',
+  inDays: (d: number) => `${d} gün sonra`,
+  noOccasions: 'Henüz doğum tarihi girilmedi.',
   email: 'E-posta',
   sendLink: 'Giriş bağlantısı gönder',
   linkSent: (e: string) => `${e} adresine bir giriş bağlantısı gönderdik. Bağlantıyı bu cihazda aç.`,
