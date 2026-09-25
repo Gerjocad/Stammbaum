@@ -12,7 +12,8 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.117.1",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "react-easy-crop": "^6.2.3"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",

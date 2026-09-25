@@ -3,21 +3,25 @@ import { KinshipPanel } from './components/KinshipPanel';
 import { Login } from './components/Login';
 import { PersonDetails, type RelationKind } from './components/PersonDetails';
 import { PersonForm } from './components/PersonForm';
-import { CloseIcon, KinshipIcon, LogOutIcon, UserPlusIcon } from './components/Icons';
+import { CakeIcon, CloseIcon, KinshipIcon, LogOutIcon, ShieldIcon, UserPlusIcon } from './components/Icons';
+import { MembersPanel } from './components/MembersPanel';
+import { OccasionsPanel } from './components/OccasionsPanel';
 import { Settings } from './components/Settings';
 import { Tree } from './components/Tree';
-import { useLang, type Strings } from './i18n';
-import { resizeImage } from './image';
-import { buildGraph, isAncestor } from './kinship';
+import { errorText, useLang, type Strings } from './i18n';
+import { upcomingOccasions } from './dates';
+import { checkPersonDates, checkRelationship, suggestions, type Findings } from './checks';
 import { createStore } from './store';
-import { fullName, type FamilyData, type NewPerson, type NewRelationship } from './types';
+import { fullName, type FamilyData, type NewPerson, type NewRelationship, type Person, type Profile } from './types';
 
 type Panel =
   | { kind: 'none' }
   | { kind: 'view'; id: string }
   | { kind: 'edit'; id: string }
   | { kind: 'new'; linkTo?: { relation: RelationKind; personId: string } }
-  | { kind: 'kinship' };
+  | { kind: 'kinship' }
+  | { kind: 'occasions' }
+  | { kind: 'members' };
 
 /** Baut die Beziehung "other ist <relation> von person". */
 function toRelationship(relation: RelationKind, personId: string, otherId: string): NewRelationship {
@@ -26,31 +30,20 @@ function toRelationship(relation: RelationKind, personId: string, otherId: strin
   return { type: 'partner', person_a: personId, person_b: otherId };
 }
 
-/** Prüft eine neue Beziehung und gibt eine Fehlermeldung zurück, wenn sie nicht passt. */
-function validate(data: FamilyData, rel: NewRelationship, t: Strings): string | null {
-  if (rel.person_a === rel.person_b) return t.errSelf;
-  const exists = data.relationships.some(
-    (r) =>
-      r.type === rel.type &&
-      ((r.person_a === rel.person_a && r.person_b === rel.person_b) ||
-        (r.type === 'partner' && r.person_a === rel.person_b && r.person_b === rel.person_a)),
-  );
-  if (exists) return t.errExists;
-  if (rel.type === 'parent') {
-    const parents = data.relationships.filter((r) => r.type === 'parent' && r.person_b === rel.person_b);
-    if (parents.length >= 2) return t.errTwoParents;
-    if (isAncestor(buildGraph(data), rel.person_b, rel.person_a))
-      return t.errCycle;
+const DISMISSED_KEY = 'stammbaum-dismissed';
+
+function loadDismissed(): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(DISMISSED_KEY) ?? '[]') as string[]);
+  } catch {
+    return new Set();
   }
-  return null;
 }
 
-/** Übersetzt technische Fehlercodes aus Speicher und Bildverarbeitung. */
-function errorText(err: unknown, t: Strings): string {
-  const msg = err instanceof Error ? err.message : String(err);
-  if (msg === 'storage-full') return t.errStorageFull;
-  if (msg === 'image-failed') return t.errImage;
-  return msg;
+/** Fehler brechen ab, Hinweise muss man bestätigen. */
+function confirmFindings(f: Findings, t: Strings) {
+  if (f.errors.length) throw new Error(f.errors[0]);
+  if (f.warnings.length && !confirm(`${f.warnings.join('\n')}\n\n${t.saveAnyway}`)) throw new Error('cancelled');
 }
 
 export default function App() {
@@ -62,6 +55,8 @@ export default function App() {
   const [panel, setPanel] = useState<Panel>({ kind: 'none' });
   const [kinA, setKinA] = useState('');
   const [kinB, setKinB] = useState('');
+  const [dismissed, setDismissed] = useState(loadDismissed);
+  const [profile, setProfile] = useState<Profile | null>(null);
 
   const reload = useCallback(async () => {
     try {
@@ -82,6 +77,18 @@ export default function App() {
     if (email) void reload();
   }, [email, reload]);
 
+  useEffect(() => {
+    if (!email) return setProfile(null);
+    store
+      .getProfile()
+      .then(setProfile)
+      .catch((err) => {
+        // Ohne Profil-Tabelle (Skript noch nicht ausgeführt) gelten die alten Regeln: alle dürfen bearbeiten.
+        setProfile({ id: '', email, name: '', role: 'editor' });
+        setError(errorText(err, t));
+      });
+  }, [email, store, t]);
+
   const run = async (fn: () => Promise<unknown>) => {
     try {
       await fn();
@@ -101,7 +108,10 @@ export default function App() {
   }, []);
 
   if (email === undefined) return <div className="loading">{t.loading}</div>;
-  if (email === null) return <Login onSignIn={(e) => store.signIn(e)} />;
+  if (email === null) return <Login onSignIn={(e) => store.signIn(e)} onRegister={(e, n) => store.register(e, n)} />;
+  if (!profile) return <div className="loading">{t.loading}</div>;
+  const canEdit = profile.role !== 'viewer';
+  const isAdmin = profile.role === 'admin';
 
   const byId = new Map(data.persons.map((p) => [p.id, p]));
   const selectedId = panel.kind === 'view' || panel.kind === 'edit' ? panel.id : null;
@@ -117,18 +127,47 @@ export default function App() {
     setPanel({ kind: 'view', id });
   }
 
-  async function savePerson(person: NewPerson & { id?: string }, photo: File | null) {
-    if (photo) person.photo_url = await store.uploadPhoto(await resizeImage(photo));
-    const saved = await store.savePerson(person);
+  async function savePerson(person: NewPerson & { id?: string }, photo: Blob | null) {
+    let rel: NewRelationship | null = null;
     if (panel.kind === 'new' && panel.linkTo) {
-      const rel = toRelationship(panel.linkTo.relation, panel.linkTo.personId, saved.id);
-      const problem = validate(data, rel, t);
-      if (problem) setError(problem);
-      else await store.addRelationship(rel);
+      // Vor dem Speichern prüfen, mit einer vorläufigen ID für die neue Person.
+      const draft: Person = { ...person, id: '__new__' };
+      rel = toRelationship(panel.linkTo.relation, panel.linkTo.personId, draft.id);
+      confirmFindings(checkRelationship({ ...data, persons: [...data.persons, draft] }, rel, t), t);
+    } else if (person.id) {
+      confirmFindings({ errors: [], warnings: checkPersonDates(data, person as Person, t) }, t);
+    }
+    // Das Foto ist bereits zugeschnitten und verkleinert (siehe CropDialog).
+    if (photo) person.photo_url = await store.uploadPhoto(photo);
+    const saved = await store.savePerson(person);
+    if (rel) {
+      await store.addRelationship({
+        ...rel,
+        person_a: rel.person_a === '__new__' ? saved.id : rel.person_a,
+        person_b: rel.person_b === '__new__' ? saved.id : rel.person_b,
+      });
     }
     await reload();
     setPanel({ kind: 'view', id: saved.id });
   }
+
+  const pending = (canEdit ? suggestions(data, t) : []).filter((s) => !dismissed.has(s.key));
+  // Vorschläge zur gerade geöffneten Person zuerst.
+  pending.sort(
+    (a, b) =>
+      Number([b.rel.person_a, b.rel.person_b].includes(selectedId ?? '')) -
+      Number([a.rel.person_a, a.rel.person_b].includes(selectedId ?? '')),
+  );
+  const suggestion = pending[0];
+  const dismiss = (key: string) => {
+    const next = new Set(dismissed).add(key);
+    setDismissed(next);
+    try {
+      localStorage.setItem(DISMISSED_KEY, JSON.stringify([...next]));
+    } catch {
+      // ignorieren
+    }
+  };
 
   const newTitle = (p: Extract<Panel, { kind: 'new' }>) => {
     if (!p.linkTo) return t.newPerson;
@@ -144,13 +183,13 @@ export default function App() {
         key={person.id}
         person={person}
         data={data}
+        canEdit={canEdit}
         onEdit={() => setPanel({ kind: 'edit', id: person.id })}
         onSelect={(id) => setPanel({ kind: 'view', id })}
         onAddNew={(relation) => setPanel({ kind: 'new', linkTo: { relation, personId: person.id } })}
         onLink={async (relation, otherId) => {
           const rel = toRelationship(relation, person.id, otherId);
-          const problem = validate(data, rel, t);
-          if (problem) throw new Error(problem);
+          confirmFindings(checkRelationship(data, rel, t), t);
           await store.addRelationship(rel);
           await reload();
         }}
@@ -163,7 +202,7 @@ export default function App() {
         }
       />
     );
-  } else if (panel.kind === 'edit' && byId.has(panel.id)) {
+  } else if (panel.kind === 'edit' && canEdit && byId.has(panel.id)) {
     const person = byId.get(panel.id)!;
     side = (
       <PersonForm
@@ -174,7 +213,7 @@ export default function App() {
         onCancel={() => setPanel({ kind: 'view', id: person.id })}
       />
     );
-  } else if (panel.kind === 'new') {
+  } else if (panel.kind === 'new' && canEdit) {
     side = (
       <PersonForm
         key={JSON.stringify(panel.linkTo ?? null)}
@@ -194,25 +233,42 @@ export default function App() {
         onClose={() => setPanel({ kind: 'none' })}
       />
     );
+  } else if (panel.kind === 'occasions') {
+    side = <OccasionsPanel persons={data.persons} onSelect={(id) => setPanel({ kind: 'view', id })} />;
+  } else if (panel.kind === 'members' && isAdmin) {
+    side = <MembersPanel store={store} me={profile} />;
   }
+  const toggle = (kind: 'new' | 'kinship' | 'occasions' | 'members') =>
+    panel.kind === kind ? closePanel() : setPanel({ kind });
+  const birthdaysToday = upcomingOccasions(data.persons).filter((o) => o.kind === 'birthday' && o.days === 0);
 
   return (
     <div className="app">
       <header>
         <h1>{t.appTitle}</h1>
         <div className="header-actions">
-          <button className="icon" onClick={() => (panel.kind === 'new' ? closePanel() : setPanel({ kind: 'new' }))} title={t.addPerson} aria-label={t.addPerson}>
-            <UserPlusIcon />
+          {canEdit && (
+            <button className="icon" onClick={() => toggle('new')} title={t.addPerson} aria-label={t.addPerson}>
+              <UserPlusIcon />
+            </button>
+          )}
+          <button className="secondary icon" onClick={() => toggle('occasions')} title={t.occasions} aria-label={t.occasions}>
+            <CakeIcon />
           </button>
           <button
             className="secondary icon"
-            onClick={() => (panel.kind === 'kinship' ? closePanel() : setPanel({ kind: 'kinship' }))}
+            onClick={() => toggle('kinship')}
             disabled={data.persons.length < 2}
             title={t.kinship}
             aria-label={t.kinship}
           >
             <KinshipIcon />
           </button>
+          {isAdmin && store.mode === 'supabase' && (
+            <button className="secondary icon" onClick={() => toggle('members')} title={t.members} aria-label={t.members}>
+              <ShieldIcon />
+            </button>
+          )}
           <Settings />
           {store.mode === 'supabase' && (
             <button
@@ -231,9 +287,31 @@ export default function App() {
           {t.demoNotice}
         </div>
       )}
+      {!canEdit && <div className="notice">{t.viewerNotice}</div>}
+      {birthdaysToday.map((o) => (
+        <div key={o.person.id} className="notice birthday">
+          <CakeIcon /> {t.birthdayToday(fullName(o.person), o.years)}
+        </div>
+      ))}
       {error && (
         <div className="notice error" onClick={() => setError(null)}>
           {error} <span className="muted">{t.hide}</span>
+        </div>
+      )}
+      {suggestion && (
+        <div className="notice suggestion">
+          <span>
+            {pending.length > 1 && <span className="muted">{t.suggestCount(1, pending.length)} · </span>}
+            {suggestion.text}
+          </span>
+          <span className="suggestion-actions">
+            <button className="small" onClick={() => run(() => store.addRelationship(suggestion.rel))}>
+              {t.suggestYes}
+            </button>
+            <button className="secondary small" onClick={() => dismiss(suggestion.key)}>
+              {t.suggestNo}
+            </button>
+          </span>
         </div>
       )}
       <main className={side ? 'with-side' : ''}>

@@ -29,6 +29,9 @@ const de = {
   editPerson: (n: string) => `${n} bearbeiten`,
   choosePhoto: 'Foto wählen',
   removePhoto: 'Foto entfernen',
+  cropTitle: 'Foto zuschneiden',
+  cropHint: 'Bild verschieben und zoomen, bis der Ausschnitt passt.',
+  cropApply: 'Übernehmen',
   firstName: 'Vorname',
   lastName: 'Nachname',
   birthName: 'Geburtsname / Mädchenname',
@@ -47,6 +50,8 @@ const de = {
   errDeathBeforeBirth: 'Das Todesdatum liegt vor dem Geburtsdatum.',
   errImage: 'Bild konnte nicht verarbeitet werden.',
   errStorageFull: 'Der Browser-Speicher ist voll. Bitte kleinere Fotos verwenden.',
+  errSchemaOutdated:
+    'Die Datenbank ist noch nicht auf dem neuesten Stand. Bitte in Supabase im SQL Editor die Zeilen am Ende von supabase/schema.sql ausführen.',
 
   // Personenansicht
   born: 'Geboren',
@@ -76,6 +81,23 @@ const de = {
   errExists: 'Diese Verbindung gibt es schon.',
   errTwoParents: 'Diese Person hat schon zwei Elternteile.',
   errCycle: 'Das geht nicht: Die Person wäre dann ihr eigener Vorfahre.',
+  errParentIsChild: (a: string, b: string) =>
+    `${a} ist bereits ein Kind von ${b} und kann nicht gleichzeitig Elternteil von ${b} sein.`,
+  errPartnerAsParent: (a: string, b: string) => `${a} und ${b} sind Partner und können nicht Elternteil und Kind sein.`,
+  errSiblingAsParent: (a: string, b: string) => `${a} und ${b} sind Geschwister und können nicht Elternteil und Kind sein.`,
+  errAncestorAsPartner: (a: string, b: string) =>
+    `${a} und ${b} stammen direkt voneinander ab und können nicht als Partner verbunden werden.`,
+  warnParentYounger: (a: string, b: string) => `${a} ist laut Geburtsdatum jünger als ${b}.`,
+  warnParentTooYoung: (a: string, age: number, b: string) => `${a} wäre bei der Geburt von ${b} erst ${age} Jahre alt gewesen.`,
+  warnParentDead: (a: string, b: string) => `${a} ist laut Todesdatum schon vor der Geburt von ${b} gestorben.`,
+  warnSiblingsAsPartners: (a: string, b: string) => `${a} und ${b} sind Geschwister.`,
+  saveAnyway: 'Trotzdem speichern?',
+  suggestPartners: (a: string, b: string, c: string) =>
+    `${a} und ${b} sind beide Eltern von ${c}. Sollen sie als Partner verbunden werden?`,
+  suggestParent: (a: string, c: string) => `Ist ${a} auch ein Elternteil von ${c}?`,
+  suggestYes: 'Ja, verbinden',
+  suggestNo: 'Nein',
+  suggestCount: (i: number, n: number) => `Vorschlag ${i} von ${n}`,
 
   // Verwandtschaft
   kinshipHint: 'Wähle zwei Personen hier aus oder klicke sie nacheinander im Baum an.',
@@ -85,6 +107,35 @@ const de = {
 
   // Anmeldung
   loginIntro: 'Melde dich mit deiner E-Mail-Adresse an. Du bekommst einen Link, mit dem du ohne Passwort hineinkommst.',
+  registerIntro:
+    'Neu hier? Registriere dich mit Namen und E-Mail-Adresse. Danach kannst du den Stammbaum ansehen; bearbeiten darfst du, sobald die Verwaltung es freigibt.',
+  name: 'Name',
+  register: 'Registrieren',
+  toRegister: 'Noch kein Konto? Registrieren',
+  toLogin: 'Schon registriert? Anmelden',
+  notRegistered: 'Zu dieser E-Mail-Adresse gibt es noch kein Konto. Bitte zuerst registrieren.',
+  signupsOff:
+    'Registrieren ist noch nicht freigeschaltet. Die Verwaltung muss in Supabase „Allow new users to sign up“ einschalten.',
+
+  // Rollen
+  viewerNotice: 'Du kannst den Stammbaum ansehen. Bearbeiten kannst du, sobald die Verwaltung es für dich freigibt.',
+  members: 'Familienmitglieder',
+  membersHint: 'Hier legst du fest, wer nur ansehen und wer auch bearbeiten darf.',
+  roleViewer: 'Nur ansehen',
+  roleEditor: 'Bearbeiten',
+  roleAdmin: 'Verwaltung',
+  you: '(du)',
+  noName: '(ohne Namen)',
+
+  // Geburtstage
+  occasions: 'Geburtstage und Gedenktage',
+  birthdayToday: (n: string, y: number) => `Heute hat ${n} Geburtstag und wird ${y}.`,
+  turns: (y: number) => `wird ${y}`,
+  memorial: (y: number) => `${y}. Todestag`,
+  today: 'heute',
+  tomorrow: 'morgen',
+  inDays: (d: number) => `in ${d} Tagen`,
+  noOccasions: 'Es sind noch keine Geburtsdaten eingetragen.',
   email: 'E-Mail',
   sendLink: 'Anmeldelink schicken',
   linkSent: (e: string) => `Wir haben dir einen Anmeldelink an ${e} geschickt. Öffne ihn auf diesem Gerät.`,
@@ -119,6 +170,9 @@ const tr: Strings = {
   editPerson: (n: string) => `${n} düzenle`,
   choosePhoto: 'Fotoğraf seç',
   removePhoto: 'Fotoğrafı kaldır',
+  cropTitle: 'Fotoğrafı kırp',
+  cropHint: 'Kesit uygun olana kadar resmi kaydır ve yakınlaştır.',
+  cropApply: 'Uygula',
   firstName: 'Ad',
   lastName: 'Soyad',
   birthName: 'Kızlık soyadı',
@@ -137,6 +191,8 @@ const tr: Strings = {
   errDeathBeforeBirth: 'Ölüm tarihi doğum tarihinden önce.',
   errImage: 'Fotoğraf işlenemedi.',
   errStorageFull: 'Tarayıcı belleği dolu. Lütfen daha küçük fotoğraflar kullanın.',
+  errSchemaOutdated:
+    'Veritabanı güncel değil. Lütfen Supabase SQL Editor’de supabase/schema.sql dosyasının sonundaki satırları çalıştırın.',
 
   born: 'Doğum',
   died: 'Ölüm',
@@ -164,6 +220,22 @@ const tr: Strings = {
   errExists: 'Bu bağlantı zaten var.',
   errTwoParents: 'Bu kişinin zaten iki ebeveyni var.',
   errCycle: 'Bu olmaz: Kişi kendi atası olurdu.',
+  errParentIsChild: (a: string, b: string) =>
+    `${a} zaten ${b} kişisinin çocuğu, aynı anda ${b} kişisinin ebeveyni olamaz.`,
+  errPartnerAsParent: (a: string, b: string) => `${a} ve ${b} eş, ebeveyn ve çocuk olamazlar.`,
+  errSiblingAsParent: (a: string, b: string) => `${a} ve ${b} kardeş, ebeveyn ve çocuk olamazlar.`,
+  errAncestorAsPartner: (a: string, b: string) => `${a} ve ${b} doğrudan birbirinin soyundan, eş olarak bağlanamazlar.`,
+  warnParentYounger: (a: string, b: string) => `Doğum tarihine göre ${a}, ${b} kişisinden daha genç.`,
+  warnParentTooYoung: (a: string, age: number, b: string) => `${b} doğduğunda ${a} sadece ${age} yaşında olurdu.`,
+  warnParentDead: (a: string, b: string) => `Ölüm tarihine göre ${a}, ${b} doğmadan önce vefat etmiş.`,
+  warnSiblingsAsPartners: (a: string, b: string) => `${a} ve ${b} kardeş.`,
+  saveAnyway: 'Yine de kaydedilsin mi?',
+  suggestPartners: (a: string, b: string, c: string) =>
+    `${a} ve ${b}, ${c} kişisinin ebeveynleri. Eş olarak bağlansınlar mı?`,
+  suggestParent: (a: string, c: string) => `${a} da ${c} kişisinin ebeveyni mi?`,
+  suggestYes: 'Evet, bağla',
+  suggestNo: 'Hayır',
+  suggestCount: (i: number, n: number) => `Öneri ${i} / ${n}`,
 
   kinshipHint: 'İki kişiyi buradan seç ya da ağaçta sırayla üzerlerine tıkla.',
   person1: '1. kişi',
@@ -171,6 +243,32 @@ const tr: Strings = {
   close: 'Kapat',
 
   loginIntro: 'E-posta adresinle giriş yap. Şifresiz giriş için sana bir bağlantı gönderilir.',
+  registerIntro:
+    'Yeni misin? Adın ve e-posta adresinle kaydol. Sonra soy ağacını görebilirsin; yönetici izin verince düzenleyebilirsin.',
+  name: 'Ad Soyad',
+  register: 'Kaydol',
+  toRegister: 'Hesabın yok mu? Kaydol',
+  toLogin: 'Zaten kayıtlı mısın? Giriş yap',
+  notRegistered: 'Bu e-posta adresiyle henüz bir hesap yok. Lütfen önce kaydol.',
+  signupsOff: 'Kayıt henüz açık değil. Yöneticinin Supabase’de „Allow new users to sign up“ ayarını açması gerekiyor.',
+
+  viewerNotice: 'Soy ağacını görebilirsin. Yönetici izin verince düzenleyebileceksin.',
+  members: 'Aile üyeleri',
+  membersHint: 'Kimin sadece görebileceğini, kimin düzenleyebileceğini buradan belirlersin.',
+  roleViewer: 'Sadece görüntüle',
+  roleEditor: 'Düzenle',
+  roleAdmin: 'Yönetici',
+  you: '(sen)',
+  noName: '(isimsiz)',
+
+  occasions: 'Doğum günleri ve anma günleri',
+  birthdayToday: (n: string, y: number) => `Bugün ${n} kişisinin doğum günü, ${y} yaşına giriyor.`,
+  turns: (y: number) => `${y} yaşına giriyor`,
+  memorial: (y: number) => `${y}. ölüm yıl dönümü`,
+  today: 'bugün',
+  tomorrow: 'yarın',
+  inDays: (d: number) => `${d} gün sonra`,
+  noOccasions: 'Henüz doğum tarihi girilmedi.',
   email: 'E-posta',
   sendLink: 'Giriş bağlantısı gönder',
   linkSent: (e: string) => `${e} adresine bir giriş bağlantısı gönderdik. Bağlantıyı bu cihazda aç.`,
@@ -218,4 +316,19 @@ export function LangProvider({ children }: { children: ReactNode }) {
 
 export function useLang() {
   return useContext(Ctx);
+}
+
+/** Macht aus einem beliebigen Fehler eine verständliche Meldung in der gewählten Sprache. */
+export function errorText(err: unknown, t: Strings): string {
+  const msg =
+    err instanceof Error
+      ? err.message
+      : typeof err === 'object' && err && 'message' in err
+        ? String((err as { message: unknown }).message)
+        : String(err);
+  if (msg === 'storage-full') return t.errStorageFull;
+  if (msg === 'image-failed') return t.errImage;
+  if (msg === 'schema-outdated') return t.errSchemaOutdated;
+  if (msg === 'cancelled') return '';
+  return msg;
 }

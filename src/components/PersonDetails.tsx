@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLang, type Strings } from '../i18n';
+import { errorText, useLang, type Strings } from '../i18n';
 import { fullName, lifeSpan, type FamilyData, type Person, type Relationship } from '../types';
 
 export type RelationKind = 'parent' | 'child' | 'partner';
@@ -17,6 +17,8 @@ function labels(t: Strings): Record<RelationKind, { list: string; add: string }>
 interface Props {
   person: Person;
   data: FamilyData;
+  /** false = nur ansehen */
+  canEdit: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onSelect: (id: string) => void;
@@ -38,7 +40,7 @@ function relationsOf(person: Person, data: FamilyData) {
   return out;
 }
 
-export function PersonDetails({ person, data, onEdit, onDelete, onSelect, onAddNew, onLink, onUnlink }: Props) {
+export function PersonDetails({ person, data, canEdit, onEdit, onDelete, onSelect, onAddNew, onLink, onUnlink }: Props) {
   const { t } = useLang();
   const LABELS = labels(t);
   const relations = relationsOf(person, data);
@@ -56,7 +58,7 @@ export function PersonDetails({ person, data, onEdit, onDelete, onSelect, onAddN
       await onLink(linkKind, linkId);
       setLinkId('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorText(err, t));
     }
   }
 
@@ -89,9 +91,11 @@ export function PersonDetails({ person, data, onEdit, onDelete, onSelect, onAddN
         )}
       </dl>
       {person.notes && <p className="notes">{person.notes}</p>}
-      <div className="actions">
-        <button onClick={onEdit}>{t.edit}</button>
-      </div>
+      {canEdit && (
+        <div className="actions">
+          <button onClick={onEdit}>{t.edit}</button>
+        </div>
+      )}
 
       {KINDS.map((kind) => (
         <section key={kind}>
@@ -103,20 +107,21 @@ export function PersonDetails({ person, data, onEdit, onDelete, onSelect, onAddN
                 <button className="link" onClick={() => onSelect(other.id)}>
                   {fullName(other)}
                 </button>
-                <button
-                  className="link danger small"
-                  title={t.removeLinkTitle}
-                  onClick={() => {
-                    if (confirm(t.confirmUnlink(fullName(other))))
-                      void onUnlink(rel);
-                  }}
-                >
-                  {t.remove}
-                </button>
+                {canEdit && (
+                  <button
+                    className="link danger small"
+                    title={t.removeLinkTitle}
+                    onClick={() => {
+                      if (confirm(t.confirmUnlink(fullName(other)))) void onUnlink(rel);
+                    }}
+                  >
+                    {t.remove}
+                  </button>
+                )}
               </li>
             ))}
           </ul>
-          {!(kind === 'parent' && relations.parent.length >= 2) && (
+          {canEdit && !(kind === 'parent' && relations.parent.length >= 2) && (
             <button className="secondary small" onClick={() => onAddNew(kind)}>
               {LABELS[kind].add}
             </button>
@@ -124,7 +129,7 @@ export function PersonDetails({ person, data, onEdit, onDelete, onSelect, onAddN
         </section>
       ))}
 
-      {others.length > 0 && (
+      {canEdit && others.length > 0 && (
         <section>
           <h3>{t.linkExisting}</h3>
           <div className="link-row">
@@ -149,16 +154,18 @@ export function PersonDetails({ person, data, onEdit, onDelete, onSelect, onAddN
         </section>
       )}
 
-      <div className="actions end">
-        <button
-          className="danger"
-          onClick={() => {
-            if (confirm(t.confirmDelete(fullName(person)))) onDelete();
-          }}
-        >
-          {t.deletePerson}
-        </button>
-      </div>
+      {canEdit && (
+        <div className="actions end">
+          <button
+            className="danger"
+            onClick={() => {
+              if (confirm(t.confirmDelete(fullName(person)))) onDelete();
+            }}
+          >
+            {t.deletePerson}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

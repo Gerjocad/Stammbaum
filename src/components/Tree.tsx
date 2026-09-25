@@ -48,6 +48,12 @@ export function Tree({ data, selectedId, marked, onSelect }: Props) {
   }, [zoom]);
 
   const hasNodes = layout.nodes.length > 0;
+  // Beim ersten Anzeigen die oberste Generation in die Mitte holen.
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !hasNodes) return;
+    el.scrollLeft = layout.focusX * zoomRef.current - el.clientWidth / 2;
+  }, [hasNodes]);
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;

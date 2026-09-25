@@ -4,9 +4,13 @@ Eine Website, auf der die Familie gemeinsam ihren Stammbaum ansieht und pflegt.
 
 - Personen mit Vorname, Nachname, Mädchenname, Geschlecht, Geburts- und Todesdatum, Foto und Notizen anlegen und bearbeiten
 - Eltern, Kinder und Partner:innen verbinden, auch direkt beim Anlegen („+ Neue Person als Kind“)
-- Stammbaum als Grafik, Generation für Generation, mit Zoom
+- Stammbaum als Grafik von oben nach unten: Eltern stehen mittig über ihren Kindern, angeheiratete Familien daneben, ohne sich kreuzende Linien; mit Zoom
+- Plausibilitätsprüfungen (z. B. kann der Vater nicht gleichzeitig der Sohn sein) und Hinweise bei unpassenden Daten
+- Vorschläge zum Bestätigen oder Ablehnen, z. B. die beiden Eltern eines Kindes als Partner zu verbinden
 - Verwandtschaftsgrad zwischen zwei beliebigen Personen berechnen (z. B. „Emre ist der Cousin 1. Grades von Cemre“), inklusive Schwieger-, Stief- und angeheirateter Verwandtschaft
-- Anmeldung per E-Mail-Link, nur für eingeladene Familienmitglieder
+- Registrieren mit Name und E-Mail, Anmeldung per E-Mail-Link ohne Passwort
+- Rollen: Neue Mitglieder dürfen zunächst nur ansehen; die Verwaltung gibt das Bearbeiten frei
+- Geburtstage und Todestage der Familie als Übersicht, mit Hinweis am Tag selbst
 - Oberfläche auf Deutsch oder Türkisch, mit türkischen Verwandtschaftsbegriffen (Amca, Dayı, Hala, Teyze, Babaanne, Anneanne, Enişte, Yenge …)
 - Helles und dunkles Design zum Umschalten
 
@@ -24,10 +28,10 @@ Ohne Supabase-Zugangsdaten läuft die App im **Demo-Modus**: Alles wird nur im e
 ## Einrichten für die Familie (einmalig)
 
 1. **Supabase-Projekt anlegen** auf [supabase.com](https://supabase.com) (kostenlos, Region z. B. Frankfurt).
-2. Im Dashboard unter **SQL Editor** den Inhalt von [`supabase/schema.sql`](supabase/schema.sql) einfügen und ausführen. Das legt die Tabellen, die Zugriffsregeln und den Foto-Speicher an.
-3. Unter **Authentication → Sign In / Providers** die Option **„Allow new users to sign up“ ausschalten**. So kommen nur Leute hinein, die du einlädst.
+2. Im Dashboard unter **SQL Editor** den Inhalt von [`supabase/schema.sql`](supabase/schema.sql) einfügen und ausführen. Das legt die Tabellen, die Rollen, die Zugriffsregeln und den Foto-Speicher an. Nach App-Updates das Skript einfach erneut komplett ausführen; es überschreibt keine Daten.
+3. Unter **Authentication → Sign In / Providers** die Option **„Allow new users to sign up“ einschalten**, damit sich Familienmitglieder selbst registrieren können.
 4. Unter **Authentication → URL Configuration** als *Site URL* und unter *Redirect URLs* die Adresse der Website eintragen, z. B. `https://gerjocad.github.io/Stammbaum/`.
-5. Familienmitglieder unter **Authentication → Users → Invite user** per E-Mail einladen.
+5. Selbst als Erste:r registrieren. Das erste Konto wird automatisch zur Verwaltung (admin). Weitere Familienmitglieder registrieren sich selbst und dürfen zunächst nur ansehen; über das Schild-Symbol oben gibst du ihnen „Bearbeiten“ frei.
 6. Unter **Project Settings → API** die *Project URL* und den *anon public key* kopieren und im GitHub-Repository unter **Settings → Secrets and variables → Actions → Variables** als `VITE_SUPABASE_URL` und `VITE_SUPABASE_ANON_KEY` eintragen. (Der anon key ist für den Browser gedacht; geschützt werden die Daten durch die Zugriffsregeln aus Schritt 2.)
 7. Im GitHub-Repository unter **Settings → Pages** als Quelle **GitHub Actions** wählen.
 
@@ -37,8 +41,10 @@ Für die lokale Entwicklung mit echten Daten `.env.example` nach `.env` kopieren
 
 ## Gut zu wissen
 
-- Fotos werden vor dem Hochladen auf 600 Pixel verkleinert. Sie liegen unter einer zufälligen Adresse, die nur kennt, wer eingeloggt ist, sind aber technisch ohne Login abrufbar, wenn jemand die Adresse hat.
+- Fotos können nach dem Auswählen quadratisch zugeschnitten werden und werden vor dem Hochladen auf höchstens 600 Pixel verkleinert. Sie liegen unter einer zufälligen Adresse, die nur kennt, wer eingeloggt ist, sind aber technisch ohne Login abrufbar, wenn jemand die Adresse hat.
 - Jede Person kann höchstens zwei Elternteile haben, und niemand kann sein eigener Vorfahre werden.
+- Abgelehnte Vorschläge merkt sich der jeweilige Browser.
+- Wer die Adresse der Website kennt, kann sich registrieren und den Stammbaum ansehen. Ändern können nur Konten, die die Verwaltung freigegeben hat. Konten, die vor der Einführung der Rollen angelegt wurden, behalten das Bearbeitungsrecht; das älteste davon wird Verwaltung.
 - GitHub Pages ist für öffentliche Repositories kostenlos. Die Familiendaten liegen nicht im Repository, sondern bei Supabase.
 
 ## Entwicklung

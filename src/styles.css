@@ -117,6 +117,8 @@ header h1 { font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-over
 .header-actions { display: flex; gap: 6px; align-items: center; flex: none; }
 .notice { padding: 8px 16px; background: var(--notice-bg); color: var(--notice-text); font-size: 0.9rem; }
 .notice.error { background: var(--error-bg); color: var(--error-text); cursor: pointer; }
+.notice.suggestion { background: var(--surface); color: var(--text); border-bottom: 1px solid var(--border); border-left: 4px solid var(--accent); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.suggestion-actions { display: flex; gap: 6px; }
 .settings { display: flex; gap: 6px; align-items: center; }
 .settings select { width: auto; margin: 0; padding: 0 4px; height: 32px; font-size: 0.85rem; }
 button.icon { width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
@@ -193,3 +195,24 @@ dd { margin: 0; }
 
 aside { position: relative; }
 .close-side { position: sticky; top: 8px; float: right; margin: 8px 8px 0 0; z-index: 1; background: var(--surface) !important; }
+
+.crop-overlay {
+  position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column;
+  background: rgba(0, 0, 0, 0.92); color: #fff;
+}
+.crop-area { position: relative; flex: 1; min-height: 0; }
+.crop-controls { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: var(--surface); color: var(--text); }
+.crop-controls p { margin: 0 0 8px; }
+.crop-controls input[type='range'] { width: 100%; padding: 0; accent-color: var(--accent); }
+
+/* Geburtstage und Mitglieder */
+.avatar.small { width: 36px; height: 36px; font-size: 0.85rem; flex-shrink: 0; }
+.occasions, .members { list-style: none; padding: 0; margin: 8px 0 0; }
+.occasions li, .members li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.occasions li > div:nth-child(2), .members li > div:first-child { flex: 1; min-width: 0; }
+.occasions li.today { background: var(--notice-bg); border-radius: 8px; padding: 8px; }
+.occasions .when { text-align: right; white-space: nowrap; }
+.members select { width: auto; margin: 0; }
+.members li > div:first-child > div { overflow: hidden; text-overflow: ellipsis; }
+.notice.birthday { display: flex; align-items: center; gap: 8px; }
+.login .link { margin-top: 12px; }
