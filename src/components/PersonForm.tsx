@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { useLang } from '../i18n';
 import type { Gender, NewPerson, Person } from '../types';
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function PersonForm({ initial, title, onSave, onCancel }: Props) {
+  const { t } = useLang();
   const [firstName, setFirstName] = useState(initial?.first_name ?? '');
   const [lastName, setLastName] = useState(initial?.last_name ?? '');
   const [gender, setGender] = useState<Gender>(initial?.gender ?? 'w');
@@ -24,8 +26,8 @@ export function PersonForm({ initial, title, onSave, onCancel }: Props) {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!firstName.trim()) return setError('Bitte einen Vornamen eingeben.');
-    if (birth && death && death < birth) return setError('Das Todesdatum liegt vor dem Geburtsdatum.');
+    if (!firstName.trim()) return setError(t.errFirstName);
+    if (birth && death && death < birth) return setError(t.errDeathBeforeBirth);
     setBusy(true);
     setError(null);
     try {
@@ -55,7 +57,7 @@ export function PersonForm({ initial, title, onSave, onCancel }: Props) {
         <div className="avatar big">{preview ? <img src={preview} alt="" /> : <span>?</span>}</div>
         <div className="photo-buttons">
           <label className="button secondary">
-            Foto wählen
+            {t.choosePhoto}
             <input
               type="file"
               accept="image/*"
@@ -75,48 +77,48 @@ export function PersonForm({ initial, title, onSave, onCancel }: Props) {
                 setRemovePhoto(true);
               }}
             >
-              Foto entfernen
+              {t.removePhoto}
             </button>
           )}
         </div>
       </div>
       <label>
-        Vorname
+        {t.firstName}
         <input value={firstName} onChange={(e) => setFirstName(e.target.value)} autoFocus />
       </label>
       <label>
-        Nachname
+        {t.lastName}
         <input value={lastName} onChange={(e) => setLastName(e.target.value)} />
       </label>
       <label>
-        Geschlecht
+        {t.gender}
         <select value={gender} onChange={(e) => setGender(e.target.value as Gender)}>
-          <option value="w">weiblich</option>
-          <option value="m">männlich</option>
-          <option value="d">divers / unbekannt</option>
+          <option value="w">{t.female}</option>
+          <option value="m">{t.male}</option>
+          <option value="d">{t.diverse}</option>
         </select>
       </label>
       <div className="two">
         <label>
-          Geburtsdatum
+          {t.birthDate}
           <input type="date" value={birth} onChange={(e) => setBirth(e.target.value)} />
         </label>
         <label>
-          Todesdatum
+          {t.deathDate}
           <input type="date" value={death} onChange={(e) => setDeath(e.target.value)} />
         </label>
       </div>
       <label>
-        Notizen
+        {t.notes}
         <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
       </label>
       {error && <p className="error">{error}</p>}
       <div className="actions">
         <button type="submit" disabled={busy}>
-          {busy ? 'Speichern …' : 'Speichern'}
+          {busy ? t.saving : t.save}
         </button>
         <button type="button" className="secondary" onClick={onCancel} disabled={busy}>
-          Abbrechen
+          {t.cancel}
         </button>
       </div>
     </form>

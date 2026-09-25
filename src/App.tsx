@@ -3,7 +3,9 @@ import { KinshipPanel } from './components/KinshipPanel';
 import { Login } from './components/Login';
 import { PersonDetails, type RelationKind } from './components/PersonDetails';
 import { PersonForm } from './components/PersonForm';
+import { Settings } from './components/Settings';
 import { Tree } from './components/Tree';
+import { useLang, type Strings } from './i18n';
 import { resizeImage } from './image';
 import { buildGraph, isAncestor } from './kinship';
 import { createStore } from './store';
@@ -24,25 +26,34 @@ function toRelationship(relation: RelationKind, personId: string, otherId: strin
 }
 
 /** Prüft eine neue Beziehung und gibt eine Fehlermeldung zurück, wenn sie nicht passt. */
-function validate(data: FamilyData, rel: NewRelationship): string | null {
-  if (rel.person_a === rel.person_b) return 'Eine Person kann nicht mit sich selbst verbunden werden.';
+function validate(data: FamilyData, rel: NewRelationship, t: Strings): string | null {
+  if (rel.person_a === rel.person_b) return t.errSelf;
   const exists = data.relationships.some(
     (r) =>
       r.type === rel.type &&
       ((r.person_a === rel.person_a && r.person_b === rel.person_b) ||
         (r.type === 'partner' && r.person_a === rel.person_b && r.person_b === rel.person_a)),
   );
-  if (exists) return 'Diese Verbindung gibt es schon.';
+  if (exists) return t.errExists;
   if (rel.type === 'parent') {
     const parents = data.relationships.filter((r) => r.type === 'parent' && r.person_b === rel.person_b);
-    if (parents.length >= 2) return 'Diese Person hat schon zwei Elternteile.';
+    if (parents.length >= 2) return t.errTwoParents;
     if (isAncestor(buildGraph(data), rel.person_b, rel.person_a))
-      return 'Das geht nicht: Die Person wäre dann ihr eigener Vorfahre.';
+      return t.errCycle;
   }
   return null;
 }
 
+/** Übersetzt technische Fehlercodes aus Speicher und Bildverarbeitung. */
+function errorText(err: unknown, t: Strings): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (msg === 'storage-full') return t.errStorageFull;
+  if (msg === 'image-failed') return t.errImage;
+  return msg;
+}
+
 export default function App() {
+  const { t } = useLang();
   const store = useMemo(createStore, []);
   const [email, setEmail] = useState<string | null | undefined>(undefined);
   const [data, setData] = useState<FamilyData>({ persons: [], relationships: [] });
@@ -56,9 +67,9 @@ export default function App() {
       setData(await store.load());
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorText(err, t));
     }
-  }, [store]);
+  }, [store, t]);
 
   useEffect(() => {
     const check = () => store.getUserEmail().then(setEmail);
@@ -75,11 +86,11 @@ export default function App() {
       await fn();
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorText(err, t));
     }
   };
 
-  if (email === undefined) return <div className="loading">Lädt …</div>;
+  if (email === undefined) return <div className="loading">{t.loading}</div>;
   if (email === null) return <Login onSignIn={(e) => store.signIn(e)} />;
 
   const byId = new Map(data.persons.map((p) => [p.id, p]));
@@ -101,7 +112,7 @@ export default function App() {
     const saved = await store.savePerson(person);
     if (panel.kind === 'new' && panel.linkTo) {
       const rel = toRelationship(panel.linkTo.relation, panel.linkTo.personId, saved.id);
-      const problem = validate(data, rel);
+      const problem = validate(data, rel, t);
       if (problem) setError(problem);
       else await store.addRelationship(rel);
     }
@@ -110,11 +121,9 @@ export default function App() {
   }
 
   const newTitle = (p: Extract<Panel, { kind: 'new' }>) => {
-    if (!p.linkTo) return 'Neue Person';
+    if (!p.linkTo) return t.newPerson;
     const name = byId.get(p.linkTo.personId)?.first_name ?? '';
-    return { parent: `Neues Elternteil von ${name}`, child: `Neues Kind von ${name}`, partner: `Neue:r Partner:in von ${name}` }[
-      p.linkTo.relation
-    ];
+    return { parent: t.newParentOf, child: t.newChildOf, partner: t.newPartnerOf }[p.linkTo.relation](name);
   };
 
   let side = null;
@@ -130,7 +139,7 @@ export default function App() {
         onAddNew={(relation) => setPanel({ kind: 'new', linkTo: { relation, personId: person.id } })}
         onLink={async (relation, otherId) => {
           const rel = toRelationship(relation, person.id, otherId);
-          const problem = validate(data, rel);
+          const problem = validate(data, rel, t);
           if (problem) throw new Error(problem);
           await store.addRelationship(rel);
           await reload();
@@ -149,7 +158,7 @@ export default function App() {
     side = (
       <PersonForm
         key={person.id}
-        title={`${fullName(person)} bearbeiten`}
+        title={t.editPerson(fullName(person))}
         initial={person}
         onSave={savePerson}
         onCancel={() => setPanel({ kind: 'view', id: person.id })}
@@ -180,28 +189,28 @@ export default function App() {
   return (
     <div className="app">
       <header>
-        <h1>Unser Stammbaum</h1>
+        <h1>{t.appTitle}</h1>
         <div className="header-actions">
-          <button onClick={() => setPanel({ kind: 'new' })}>Person hinzufügen</button>
+          <button onClick={() => setPanel({ kind: 'new' })}>{t.addPerson}</button>
           <button className="secondary" onClick={() => setPanel({ kind: 'kinship' })} disabled={data.persons.length < 2}>
-            Verwandtschaft berechnen
+            {t.kinship}
           </button>
           {store.mode === 'supabase' && (
             <button className="link" onClick={() => store.signOut()} title={email}>
-              Abmelden
+              {t.signOut}
             </button>
           )}
+          <Settings />
         </div>
       </header>
       {store.mode === 'local' && (
         <div className="notice">
-          Demo-Modus: Die Daten werden nur in diesem Browser gespeichert. Für die gemeinsame Familien-Website bitte
-          Supabase einrichten (siehe README).
+          {t.demoNotice}
         </div>
       )}
       {error && (
         <div className="notice error" onClick={() => setError(null)}>
-          {error} <span className="muted">(ausblenden)</span>
+          {error} <span className="muted">{t.hide}</span>
         </div>
       )}
       <main className={side ? 'with-side' : ''}>

@@ -1,13 +1,18 @@
 import { useState } from 'react';
+import { useLang, type Strings } from '../i18n';
 import { fullName, lifeSpan, type FamilyData, type Person, type Relationship } from '../types';
 
 export type RelationKind = 'parent' | 'child' | 'partner';
 
-const LABELS: Record<RelationKind, { list: string; add: string }> = {
-  parent: { list: 'Eltern', add: 'Elternteil' },
-  partner: { list: 'Partner:innen', add: 'Partner:in' },
-  child: { list: 'Kinder', add: 'Kind' },
-};
+const KINDS: RelationKind[] = ['parent', 'partner', 'child'];
+
+function labels(t: Strings): Record<RelationKind, { list: string; add: string }> {
+  return {
+    parent: { list: t.parents, add: t.addNewParent },
+    partner: { list: t.partners, add: t.addNewPartner },
+    child: { list: t.children, add: t.addNewChild },
+  };
+}
 
 interface Props {
   person: Person;
@@ -34,6 +39,8 @@ function relationsOf(person: Person, data: FamilyData) {
 }
 
 export function PersonDetails({ person, data, onEdit, onDelete, onSelect, onAddNew, onLink, onUnlink }: Props) {
+  const { t } = useLang();
+  const LABELS = labels(t);
   const relations = relationsOf(person, data);
   const [linkKind, setLinkKind] = useState<RelationKind>('parent');
   const [linkId, setLinkId] = useState('');
@@ -67,26 +74,26 @@ export function PersonDetails({ person, data, onEdit, onDelete, onSelect, onAddN
       <dl>
         {person.birth_date && (
           <>
-            <dt>Geboren</dt>
+            <dt>{t.born}</dt>
             <dd>{formatDate(person.birth_date)}</dd>
           </>
         )}
         {person.death_date && (
           <>
-            <dt>Gestorben</dt>
+            <dt>{t.died}</dt>
             <dd>{formatDate(person.death_date)}</dd>
           </>
         )}
       </dl>
       {person.notes && <p className="notes">{person.notes}</p>}
       <div className="actions">
-        <button onClick={onEdit}>Bearbeiten</button>
+        <button onClick={onEdit}>{t.edit}</button>
       </div>
 
-      {(Object.keys(LABELS) as RelationKind[]).map((kind) => (
+      {KINDS.map((kind) => (
         <section key={kind}>
           <h3>{LABELS[kind].list}</h3>
-          {relations[kind].length === 0 && <p className="muted small">Keine eingetragen.</p>}
+          {relations[kind].length === 0 && <p className="muted small">{t.noneYet}</p>}
           <ul className="relations">
             {relations[kind].map(({ rel, other }) => (
               <li key={rel.id}>
@@ -95,20 +102,20 @@ export function PersonDetails({ person, data, onEdit, onDelete, onSelect, onAddN
                 </button>
                 <button
                   className="link danger small"
-                  title="Verbindung entfernen"
+                  title={t.removeLinkTitle}
                   onClick={() => {
-                    if (confirm(`Verbindung zu ${fullName(other)} entfernen? Die Person selbst bleibt erhalten.`))
+                    if (confirm(t.confirmUnlink(fullName(other))))
                       void onUnlink(rel);
                   }}
                 >
-                  entfernen
+                  {t.remove}
                 </button>
               </li>
             ))}
           </ul>
           {!(kind === 'parent' && relations.parent.length >= 2) && (
             <button className="secondary small" onClick={() => onAddNew(kind)}>
-              + Neue Person als {LABELS[kind].add}
+              {LABELS[kind].add}
             </button>
           )}
         </section>
@@ -116,15 +123,15 @@ export function PersonDetails({ person, data, onEdit, onDelete, onSelect, onAddN
 
       {others.length > 0 && (
         <section>
-          <h3>Mit vorhandener Person verbinden</h3>
+          <h3>{t.linkExisting}</h3>
           <div className="link-row">
             <select value={linkKind} onChange={(e) => setLinkKind(e.target.value as RelationKind)}>
-              <option value="parent">ist Elternteil von {person.first_name}</option>
-              <option value="child">ist Kind von {person.first_name}</option>
-              <option value="partner">ist Partner:in von {person.first_name}</option>
+              <option value="parent">{t.isParentOf(person.first_name)}</option>
+              <option value="child">{t.isChildOf(person.first_name)}</option>
+              <option value="partner">{t.isPartnerOf(person.first_name)}</option>
             </select>
             <select value={linkId} onChange={(e) => setLinkId(e.target.value)}>
-              <option value="">Person wählen …</option>
+              <option value="">{t.choosePerson}</option>
               {others.map((p) => (
                 <option key={p.id} value={p.id}>
                   {fullName(p)} {lifeSpan(p) && `(${lifeSpan(p)})`}
@@ -132,7 +139,7 @@ export function PersonDetails({ person, data, onEdit, onDelete, onSelect, onAddN
               ))}
             </select>
             <button onClick={link} disabled={!linkId}>
-              Verbinden
+              {t.link}
             </button>
           </div>
           {error && <p className="error">{error}</p>}
@@ -143,10 +150,10 @@ export function PersonDetails({ person, data, onEdit, onDelete, onSelect, onAddN
         <button
           className="danger"
           onClick={() => {
-            if (confirm(`${fullName(person)} und alle Verbindungen dieser Person wirklich löschen?`)) onDelete();
+            if (confirm(t.confirmDelete(fullName(person)))) onDelete();
           }}
         >
-          Person löschen
+          {t.deletePerson}
         </button>
       </div>
     </div>

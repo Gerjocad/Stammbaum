@@ -8,6 +8,6 @@ export async function resizeImage(file: File, maxSize = 600): Promise<Blob> {
   canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close();
   return new Promise((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Bild konnte nicht verarbeitet werden.'))), 'image/jpeg', 0.85),
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('image-failed'))), 'image/jpeg', 0.85),
   );
 }

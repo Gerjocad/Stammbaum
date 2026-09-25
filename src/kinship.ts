@@ -136,53 +136,217 @@ export interface KinshipResult {
   detail?: string;
 }
 
+export type KinshipLang = 'de' | 'tr';
+
 function article(gender: Gender): string {
   return g3(gender, 'der ', 'die ', '');
 }
 
-function names(g: Graph, ids: string[]): string {
-  const list = ids.map((id) => fullName(g.byId.get(id)!));
-  if (list.length <= 1) return list.join('');
-  return list.slice(0, -1).join(', ') + ' und ' + list[list.length - 1];
-}
-
-function sharedParents(g: Graph, a: string, b: string): number {
+function sharedParentIds(g: Graph, a: string, b: string): string[] {
   const pb = g.parents.get(b) ?? [];
-  return (g.parents.get(a) ?? []).filter((p) => pb.includes(p)).length;
+  return (g.parents.get(a) ?? []).filter((p) => pb.includes(p));
 }
 
-function bloodTermFor(g: Graph, a: string, b: string, rel: BloodRelation): string {
-  const A = g.byId.get(a)!;
-  let half = false;
-  if (rel.up === 1 && rel.down === 1) {
-    const shared = sharedParents(g, a, b);
-    const both = (g.parents.get(a)?.length ?? 0) === 2 && (g.parents.get(b)?.length ?? 0) === 2;
-    half = shared === 1 && both;
+/** Weg von `from` nach oben zu `to` (inklusive beider), falls `to` ein Vorfahre ist. */
+function pathUp(g: Graph, from: string, to: string): string[] {
+  const prev = new Map<string, string | null>([[from, null]]);
+  const queue = [from];
+  while (queue.length) {
+    const cur = queue.shift()!;
+    if (cur === to) break;
+    for (const p of g.parents.get(cur) ?? []) {
+      if (!prev.has(p)) {
+        prev.set(p, cur);
+        queue.push(p);
+      }
+    }
   }
-  return bloodTerm(rel.up, rel.down, A.gender, half);
+  const path = [to];
+  while (prev.get(path[0])) path.unshift(prev.get(path[0])!);
+  return path;
+}
+
+/** Alles, was eine Sprache braucht, um eine Blutsverwandtschaft zu benennen. */
+interface BloodContext {
+  g: Graph;
+  a: string;
+  b: string;
+  rel: BloodRelation;
+  /** Weg von B hoch zum gemeinsamen Vorfahren: [B, Elternteil von B, …, Vorfahre]. */
+  bPath: string[];
+}
+
+interface Vocab {
+  blood(c: BloodContext): string;
+  partner(A: Person): string;
+  parentInLaw(A: Person): string;
+  childInLaw(A: Person): string;
+  /** A ist Partner:in eines Geschwisters von B. */
+  partnerOfSibling(A: Person): string;
+  /** A ist Geschwister von Bs Partner:in P. */
+  siblingOfPartner(A: Person, P: Person): string;
+  stepParent(A: Person): string;
+  stepChild(A: Person): string;
+  parentWord(A: Person): string;
+  childWord(A: Person): string;
+  /** Satz "A ist <term> von B". */
+  is(A: Person, term: string, B: Person): string;
+  select: string;
+  same(a: string, b: string): string;
+  married(a: string, b: string): string;
+  connected(a: string, b: string): string;
+  none(a: string, b: string): string;
+  common(names: string[]): string;
+  and: string;
+}
+
+function bloodContext(g: Graph, a: string, b: string, rel: BloodRelation): BloodContext {
+  return { g, a, b, rel, bPath: pathUp(g, b, rel.common[0]) };
+}
+
+const DE: Vocab = {
+  blood({ g, a, b, rel }) {
+    const A = g.byId.get(a)!;
+    let half = false;
+    if (rel.up === 1 && rel.down === 1) {
+      const both = (g.parents.get(a)?.length ?? 0) === 2 && (g.parents.get(b)?.length ?? 0) === 2;
+      half = sharedParentIds(g, a, b).length === 1 && both;
+    }
+    return bloodTerm(rel.up, rel.down, A.gender, half);
+  },
+  partner: (A) => g3(A.gender, 'Partner', 'Partnerin', 'Partner:in'),
+  parentInLaw: (A) => g3(A.gender, 'Schwiegervater', 'Schwiegermutter', 'Schwiegerelternteil'),
+  childInLaw: (A) => g3(A.gender, 'Schwiegersohn', 'Schwiegertochter', 'Schwiegerkind'),
+  partnerOfSibling: (A) => g3(A.gender, 'Schwager', 'Schwägerin', 'Schwager/Schwägerin'),
+  siblingOfPartner: (A) => g3(A.gender, 'Schwager', 'Schwägerin', 'Schwager/Schwägerin'),
+  stepParent: (A) => g3(A.gender, 'Stiefvater', 'Stiefmutter', 'Stiefelternteil'),
+  stepChild: (A) => g3(A.gender, 'Stiefsohn', 'Stieftochter', 'Stiefkind'),
+  parentWord: (A) => g3(A.gender, 'Vater', 'Mutter', 'Elternteil'),
+  childWord: (A) => g3(A.gender, 'Sohn', 'Tochter', 'Kind'),
+  is: (A, term, B) => `${fullName(A)} ist ${article(A.gender)}${term} von ${fullName(B)}`,
+  select: 'Bitte zwei Personen auswählen.',
+  same: (a, b) => `${a} und ${b} sind dieselbe Person.`,
+  married: (a, b) => `${a} ist angeheiratet mit ${b} verwandt.`,
+  connected: (a, b) => `${a} und ${b} sind über Partnerschaften miteinander verbunden.`,
+  none: (a, b) => `Zwischen ${a} und ${b} ist keine Verbindung eingetragen.`,
+  common: (names) => `Gemeinsame Vorfahren: ${joinNames(names, 'und')}`,
+  and: ', und ',
+};
+
+/** Türkische Vorfahrenbezeichnung; `side` ist das Geschlecht des Elternteils von B auf dieser Linie. */
+function trAncestor(level: number, gender: Gender, side: Gender | undefined, withCount = true): string {
+  if (level === 1) return g3(gender, 'Baba', 'Anne', 'Ebeveyn');
+  if (level === 2) {
+    if (gender === 'm') return 'Dede';
+    if (gender === 'w') return side === 'm' ? 'Babaanne' : side === 'w' ? 'Anneanne' : 'Büyükanne';
+    return 'Büyük ebeveyn';
+  }
+  const base = g3(gender, 'Büyük dede', 'Büyük nine', 'Büyük ebeveyn');
+  return withCount && level > 3 ? `${base} (${level} kuşak)` : base;
+}
+
+/** Türkischer Genitiv für die Wörter aus trAncestor ("Babaanne" → "Babaannenin"). */
+function trGenitive(word: string): string {
+  return word.endsWith('ebeveyn') ? `${word}inin` : `${word}nin`;
+}
+
+const TR: Vocab = {
+  blood({ g, a, b, rel, bPath }) {
+    const A = g.byId.get(a)!;
+    const B = g.byId.get(b)!;
+    const gA = A.gender;
+    const side = bPath[1] ? g.byId.get(bPath[1])!.gender : undefined;
+    const { up, down } = rel;
+    if (up === 0 && down === 0) return 'aynı kişi';
+    if (up === 0) return trAncestor(down, gA, side);
+    if (down === 0) {
+      if (up === 1) return g3(gA, 'Oğul', 'Kız', 'Çocuk');
+      if (up === 2) return 'Torun';
+      if (up === 3) return 'Torunun çocuğu';
+      if (up === 4) return 'Torunun torunu';
+      return `Torun (${up} kuşak)`;
+    }
+    if (up === 1 && down === 1) {
+      const shared = sharedParentIds(g, a, b);
+      const both = (g.parents.get(a)?.length ?? 0) === 2 && (g.parents.get(b)?.length ?? 0) === 2;
+      if (shared.length === 1 && both) {
+        const pg = g.byId.get(shared[0])!.gender;
+        return pg === 'm' ? 'Baba bir kardeş' : pg === 'w' ? 'Anne bir kardeş' : 'Yarı kardeş';
+      }
+      if (A.birth_date && B.birth_date && A.birth_date < B.birth_date) {
+        if (gA === 'm') return 'Ağabey';
+        if (gA === 'w') return 'Abla';
+      }
+      return g3(gA, 'Erkek kardeş', 'Kız kardeş', 'Kardeş');
+    }
+    if (up === 1) {
+      if (down === 2) {
+        if (gA === 'd') return 'Ebeveyninin kardeşi';
+        if (side === 'm') return gA === 'm' ? 'Amca' : 'Hala';
+        if (side === 'w') return gA === 'm' ? 'Dayı' : 'Teyze';
+        return gA === 'm' ? 'Amca/Dayı' : 'Hala/Teyze';
+      }
+      const ancestor = g.byId.get(bPath[down - 1])!;
+      return `${trGenitive(trAncestor(down - 1, ancestor.gender, side, false))} kardeşi`;
+    }
+    if (down === 1) {
+      if (up === 2) return 'Yeğen';
+      if (up === 3) return 'Yeğenin çocuğu';
+      if (up === 4) return 'Yeğenin torunu';
+      return `Yeğen (${up - 1} kuşak)`;
+    }
+    const degree = Math.min(up, down) - 1;
+    const diff = Math.abs(up - down);
+    const base = degree === 1 ? 'Kuzen' : `${degree}. dereceden kuzen`;
+    return diff ? `${base}, ${diff} kuşak farkla` : base;
+  },
+  partner: () => 'Eş',
+  parentInLaw: (A) => g3(A.gender, 'Kayınpeder', 'Kayınvalide', 'Eşinin ebeveyni'),
+  childInLaw: (A) => g3(A.gender, 'Damat', 'Gelin', 'Çocuğunun eşi'),
+  partnerOfSibling: (A) => g3(A.gender, 'Enişte', 'Yenge', 'Kardeşinin eşi'),
+  siblingOfPartner: (A, P) => {
+    if (A.gender === 'm') return 'Kayınbirader';
+    if (A.gender === 'w') return P.gender === 'w' ? 'Baldız' : P.gender === 'm' ? 'Görümce' : 'Eşinin kız kardeşi';
+    return 'Eşinin kardeşi';
+  },
+  stepParent: (A) => g3(A.gender, 'Üvey baba', 'Üvey anne', 'Üvey ebeveyn'),
+  stepChild: (A) => g3(A.gender, 'Üvey oğul', 'Üvey kız', 'Üvey çocuk'),
+  parentWord: (A) => g3(A.gender, 'Baba', 'Anne', 'Ebeveyn'),
+  childWord: (A) => g3(A.gender, 'Oğul', 'Kız', 'Çocuk'),
+  is: (A, term, B) => `${fullName(A)}, ${fullName(B)} için: ${term}`,
+  select: 'Lütfen iki kişi seç.',
+  same: (a, b) => `${a} ve ${b} aynı kişi.`,
+  married: (a, b) => `${a} ile ${b} evlilik yoluyla akraba.`,
+  connected: (a, b) => `${a} ile ${b} evlilikler üzerinden birbirine bağlı.`,
+  none: (a, b) => `${a} ile ${b} arasında kayıtlı bir bağ yok.`,
+  common: (names) => `Ortak atalar: ${joinNames(names, 've')}`,
+  and: '; ',
+};
+
+function joinNames(list: string[], and: string): string {
+  if (list.length <= 1) return list.join('');
+  return list.slice(0, -1).join(', ') + ` ${and} ` + list[list.length - 1];
 }
 
 /** Was ist A für B? */
-export function describeKinship(data: FamilyData, a: string, b: string): KinshipResult {
+export function describeKinship(data: FamilyData, a: string, b: string, lang: KinshipLang = 'de'): KinshipResult {
+  const v = lang === 'tr' ? TR : DE;
   const g = buildGraph(data);
   const A = g.byId.get(a);
   const B = g.byId.get(b);
-  if (!A || !B) return { sentence: 'Bitte zwei Personen auswählen.' };
+  if (!A || !B) return { sentence: v.select };
   const nameA = fullName(A);
   const nameB = fullName(B);
-  if (a === b) return { sentence: `${nameA} und ${nameB} sind dieselbe Person.` };
+  if (a === b) return { sentence: v.same(nameA, nameB) };
 
-  const say = (term: string, detail?: string): KinshipResult => ({
-    sentence: `${nameA} ist ${article(A.gender)}${term} von ${nameB}.`,
-    detail,
-  });
+  const say = (term: string, detail?: string): KinshipResult => ({ sentence: v.is(A, term, B) + '.', detail });
 
   // 1. Blutsverwandtschaft
   const rel = bloodRelation(g, a, b);
   if (rel) {
-    const term = bloodTermFor(g, a, b, rel);
+    const term = v.blood(bloodContext(g, a, b, rel));
     const detail =
-      rel.up > 0 && rel.down > 0 ? `Gemeinsame Vorfahren: ${names(g, rel.common)}` : undefined;
+      rel.up > 0 && rel.down > 0 ? v.common(rel.common.map((id) => fullName(g.byId.get(id)!))) : undefined;
     return say(term, detail);
   }
 
@@ -196,31 +360,29 @@ export function describeKinship(data: FamilyData, a: string, b: string): Kinship
   };
 
   // 2. Direkte Partnerschaft
-  if (partnersOf(a).includes(b)) return say(g3(A.gender, 'Partner', 'Partnerin', 'Partner:in'));
+  if (partnersOf(a).includes(b)) return say(v.partner(A));
 
   // 3. Bekannte Schwieger- und Stiefbeziehungen
-  if (partnersOf(b).some((p) => parentsOf(p).includes(a)))
-    return say(g3(A.gender, 'Schwiegervater', 'Schwiegermutter', 'Schwiegerelternteil'));
-  if (childrenOf(b).some((c) => partnersOf(c).includes(a)))
-    return say(g3(A.gender, 'Schwiegersohn', 'Schwiegertochter', 'Schwiegerkind'));
-  if (
-    partnersOf(b).some((p) => siblingsOf(p).includes(a)) ||
-    siblingsOf(b).some((s) => partnersOf(s).includes(a))
-  )
-    return say(g3(A.gender, 'Schwager', 'Schwägerin', 'Schwager/Schwägerin'));
-  if (parentsOf(b).some((p) => partnersOf(p).includes(a)))
-    return say(g3(A.gender, 'Stiefvater', 'Stiefmutter', 'Stiefelternteil'));
-  if (parentsOf(a).some((p) => partnersOf(p).includes(b)))
-    return say(g3(A.gender, 'Stiefsohn', 'Stieftochter', 'Stiefkind'));
+  if (partnersOf(b).some((p) => parentsOf(p).includes(a))) return say(v.parentInLaw(A));
+  if (childrenOf(b).some((c) => partnersOf(c).includes(a))) return say(v.childInLaw(A));
+  if (siblingsOf(b).some((s) => partnersOf(s).includes(a))) return say(v.partnerOfSibling(A));
+  const partnerWithSibling = partnersOf(b).find((p) => siblingsOf(p).includes(a));
+  if (partnerWithSibling) return say(v.siblingOfPartner(A, g.byId.get(partnerWithSibling)!));
+  if (parentsOf(b).some((p) => partnersOf(p).includes(a))) return say(v.stepParent(A));
+  if (parentsOf(a).some((p) => partnersOf(p).includes(b))) return say(v.stepChild(A));
 
   // 4. Angeheiratet über eine Partnerschaft
   for (const p of partnersOf(a)) {
     const r = bloodRelation(g, p, b);
     if (r) {
       const P = g.byId.get(p)!;
+      const pTerm = v.blood(bloodContext(g, p, b, r));
+      // Im Türkischen heißt der Partner von Onkel/Tante "Enişte" bzw. "Yenge".
+      if (lang === 'tr' && r.up === 1 && r.down === 2 && A.gender !== 'd')
+        return say(A.gender === 'm' ? 'Enişte' : 'Yenge', v.is(A, v.partner(A), P) + v.and + v.is(P, pTerm, B) + '.');
       return {
-        sentence: `${nameA} ist angeheiratet mit ${nameB} verwandt.`,
-        detail: `${nameA} ist ${article(A.gender)}${g3(A.gender, 'Partner', 'Partnerin', 'Partner:in')} von ${fullName(P)}, und ${fullName(P)} ist ${article(P.gender)}${bloodTermFor(g, p, b, r)} von ${nameB}.`,
+        sentence: v.married(nameA, nameB),
+        detail: v.is(A, v.partner(A), P) + v.and + v.is(P, pTerm, B) + '.',
       };
     }
   }
@@ -229,8 +391,8 @@ export function describeKinship(data: FamilyData, a: string, b: string): Kinship
     if (r) {
       const P = g.byId.get(p)!;
       return {
-        sentence: `${nameA} ist angeheiratet mit ${nameB} verwandt.`,
-        detail: `${nameA} ist ${article(A.gender)}${bloodTermFor(g, a, p, r)} von ${fullName(P)}, und ${fullName(P)} ist ${article(P.gender)}${g3(P.gender, 'Partner', 'Partnerin', 'Partner:in')} von ${nameB}.`,
+        sentence: v.married(nameA, nameB),
+        detail: v.is(A, v.blood(bloodContext(g, a, p, r)), P) + v.and + v.is(P, v.partner(P), B) + '.',
       };
     }
   }
@@ -241,21 +403,18 @@ export function describeKinship(data: FamilyData, a: string, b: string): Kinship
     const steps: string[] = [];
     for (let i = 0; i < path.length - 1; i++) {
       const x = g.byId.get(path[i])!;
-      const y = path[i + 1];
-      const term = parentsOf(y).includes(x.id)
-        ? g3(x.gender, 'Vater', 'Mutter', 'Elternteil')
-        : childrenOf(y).includes(x.id)
-          ? g3(x.gender, 'Sohn', 'Tochter', 'Kind')
-          : g3(x.gender, 'Partner', 'Partnerin', 'Partner:in');
-      steps.push(`${fullName(x)} ist ${article(x.gender)}${term} von ${fullName(g.byId.get(y)!)}`);
+      const y = g.byId.get(path[i + 1])!;
+      const term = parentsOf(y.id).includes(x.id)
+        ? v.parentWord(x)
+        : childrenOf(y.id).includes(x.id)
+          ? v.childWord(x)
+          : v.partner(x);
+      steps.push(v.is(x, term, y));
     }
-    return {
-      sentence: `${nameA} und ${nameB} sind über Partnerschaften miteinander verbunden.`,
-      detail: steps.join('; ') + '.',
-    };
+    return { sentence: v.connected(nameA, nameB), detail: steps.join('; ') + '.' };
   }
 
-  return { sentence: `Zwischen ${nameA} und ${nameB} ist keine Verbindung eingetragen.` };
+  return { sentence: v.none(nameA, nameB) };
 }
 
 /** Kürzester Weg über Eltern-, Kind- und Partnerbeziehungen. */

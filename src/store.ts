@@ -113,7 +113,8 @@ class LocalStore implements Store {
     try {
       localStorage.setItem(LOCAL_KEY, JSON.stringify(data));
     } catch (e) {
-      throw new Error('Der Browser-Speicher ist voll. Bitte kleinere Fotos verwenden.', { cause: e });
+      // Die Oberfläche übersetzt diesen Code in eine verständliche Meldung.
+      throw new Error('storage-full', { cause: e });
     }
   }
 

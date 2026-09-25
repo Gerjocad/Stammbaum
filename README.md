@@ -7,6 +7,8 @@ Eine Website, auf der die Familie gemeinsam ihren Stammbaum ansieht und pflegt.
 - Stammbaum als Grafik, Generation für Generation, mit Zoom
 - Verwandtschaftsgrad zwischen zwei beliebigen Personen berechnen (z. B. „Emre ist der Cousin 1. Grades von Cemre“), inklusive Schwieger-, Stief- und angeheirateter Verwandtschaft
 - Anmeldung per E-Mail-Link, nur für eingeladene Familienmitglieder
+- Oberfläche auf Deutsch oder Türkisch, mit türkischen Verwandtschaftsbegriffen (Amca, Dayı, Hala, Teyze, Babaanne, Anneanne, Enişte, Yenge …)
+- Helles und dunkles Design zum Umschalten
 
 Technik: React + TypeScript mit Vite. Daten, Fotos und Anmeldung liegen bei [Supabase](https://supabase.com) (kostenloser Tarif reicht). Die Website selbst wird über GitHub Pages veröffentlicht.
 
@@ -51,4 +53,5 @@ Aufbau:
 - `src/kinship.ts` – Verwandtschaftsgrad zwischen zwei Personen
 - `src/layout.ts` – Anordnung des Baums (Generationen, Paare, Linien)
 - `src/store.ts` – Speicherung in Supabase bzw. im Browser (Demo)
+- `src/i18n.tsx` – Texte auf Deutsch und Türkisch
 - `src/components/` – Baum, Personenansicht, Formular, Verwandtschaftsrechner, Anmeldung

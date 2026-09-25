@@ -1,3 +1,4 @@
+import { useLang } from '../i18n';
 import { describeKinship } from '../kinship';
 import { fullName, lifeSpan, type FamilyData } from '../types';
 
@@ -11,30 +12,31 @@ interface Props {
 }
 
 export function KinshipPanel({ data, a, b, setA, setB, onClose }: Props) {
-  const sorted = [...data.persons].sort((x, y) => fullName(x).localeCompare(fullName(y), 'de'));
+  const { t, lang } = useLang();
+  const sorted = [...data.persons].sort((x, y) => fullName(x).localeCompare(fullName(y), lang));
   const options = sorted.map((p) => (
     <option key={p.id} value={p.id}>
       {fullName(p)} {lifeSpan(p) && `(${lifeSpan(p)})`}
     </option>
   ));
-  const result = a && b ? describeKinship(data, a, b) : null;
-  const reverse = a && b && a !== b ? describeKinship(data, b, a) : null;
+  const result = a && b ? describeKinship(data, a, b, lang) : null;
+  const reverse = a && b && a !== b ? describeKinship(data, b, a, lang) : null;
 
   return (
     <div className="panel">
-      <h2>Verwandtschaft berechnen</h2>
-      <p className="muted small">Wähle zwei Personen hier aus oder klicke sie nacheinander im Baum an.</p>
+      <h2>{t.kinship}</h2>
+      <p className="muted small">{t.kinshipHint}</p>
       <label>
-        Person 1
+        {t.person1}
         <select value={a} onChange={(e) => setA(e.target.value)}>
-          <option value="">Person wählen …</option>
+          <option value="">{t.choosePerson}</option>
           {options}
         </select>
       </label>
       <label>
-        Person 2
+        {t.person2}
         <select value={b} onChange={(e) => setB(e.target.value)}>
-          <option value="">Person wählen …</option>
+          <option value="">{t.choosePerson}</option>
           {options}
         </select>
       </label>
@@ -47,7 +49,7 @@ export function KinshipPanel({ data, a, b, setA, setB, onClose }: Props) {
       )}
       <div className="actions">
         <button className="secondary" onClick={onClose}>
-          Schließen
+          {t.close}
         </button>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useLang } from '../i18n';
 import { CARD_H, CARD_W, computeLayout } from '../layout';
 import { fullName, lifeSpan, type FamilyData } from '../types';
 
@@ -12,13 +13,14 @@ interface Props {
 export function Tree({ data, selectedId, marked, onSelect }: Props) {
   const layout = useMemo(() => computeLayout(data), [data]);
   const [zoom, setZoom] = useState(1);
+  const { t } = useLang();
   const byId = useMemo(() => new Map(data.persons.map((p) => [p.id, p])), [data]);
 
   if (!layout.nodes.length) {
     return (
       <div className="empty">
-        <p>Noch keine Personen eingetragen.</p>
-        <p>Beginne mit „Person hinzufügen“, zum Beispiel mit dir selbst.</p>
+        <p>{t.emptyTitle}</p>
+        <p>{t.emptyHint}</p>
       </div>
     );
   }
@@ -26,11 +28,11 @@ export function Tree({ data, selectedId, marked, onSelect }: Props) {
   return (
     <div className="tree-wrap">
       <div className="zoom">
-        <button onClick={() => setZoom((z) => Math.max(0.3, z - 0.1))} aria-label="Verkleinern">
+        <button onClick={() => setZoom((z) => Math.max(0.3, z - 0.1))} aria-label={t.zoomOut}>
           −
         </button>
         <span>{Math.round(zoom * 100)} %</span>
-        <button onClick={() => setZoom((z) => Math.min(2, z + 0.1))} aria-label="Vergrößern">
+        <button onClick={() => setZoom((z) => Math.min(2, z + 0.1))} aria-label={t.zoomIn}>
           +
         </button>
       </div>

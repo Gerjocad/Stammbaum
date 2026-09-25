@@ -115,3 +115,53 @@ describe('describeKinship', () => {
     );
   });
 });
+
+describe('describeKinship auf Türkisch', () => {
+  const t = (a: string, b: string) => describeKinship(data, a, b, 'tr').sentence;
+  // Väterliche und mütterliche Seite unterscheiden: Mutter bekommt eine eigene Schwester.
+  const withMaternal: FamilyData = {
+    persons: [...data.persons, person('Oma2', 'w'), person('Teyze', 'w'), person('Dayi', 'm')],
+    relationships: [
+      ...data.relationships,
+      parent('Oma2', 'Mutter'),
+      parent('Oma2', 'Teyze'),
+      parent('Oma2', 'Dayi'),
+    ],
+  };
+  const tm = (a: string, b: string) => describeKinship(withMaternal, a, b, 'tr').sentence;
+
+  it('unterscheidet väterliche und mütterliche Seite', () => {
+    expect(t('Tante', 'Ich')).toBe('Tante, Ich için: Hala.');
+    expect(tm('Teyze', 'Ich')).toBe('Teyze, Ich için: Teyze.');
+    expect(tm('Dayi', 'Ich')).toBe('Dayi, Ich için: Dayı.');
+    expect(t('Oma', 'Ich')).toBe('Oma, Ich için: Babaanne.');
+    expect(tm('Oma2', 'Ich')).toBe('Oma2, Ich için: Anneanne.');
+    expect(t('Opa', 'Ich')).toBe('Opa, Ich için: Dede.');
+    expect(t('Tante', 'Nichte')).toBe('Tante, Nichte için: Dedenin kardeşi.');
+  });
+
+  it('benennt Kinder, Geschwister, Cousins und Angeheiratete', () => {
+    expect(t('Ich', 'Vater')).toBe('Ich, Vater için: Çocuk.');
+    expect(t('Nichte', 'Oma')).toBe('Nichte, Oma için: Torunun çocuğu.');
+    expect(t('Schwester', 'Ich')).toBe('Schwester, Ich için: Kız kardeş.');
+    expect(t('Halbbruder', 'Schwester')).toBe('Halbbruder, Schwester için: Baba bir kardeş.');
+    expect(t('Nichte', 'Ich')).toBe('Nichte, Ich için: Yeğen.');
+    expect(t('Cousin', 'Ich')).toBe('Cousin, Ich için: Kuzen.');
+    expect(t('Onkel', 'Ich')).toBe('Onkel, Ich için: Enişte.');
+    expect(t('Schwager', 'Ich')).toBe('Schwager, Ich için: Enişte.');
+    expect(t('Vater', 'Schwager')).toBe('Vater, Schwager için: Kayınpeder.');
+    expect(t('Schwager', 'Mutter')).toBe('Schwager, Mutter için: Damat.');
+    expect(t('Mutter', 'Vater')).toBe('Mutter, Vater için: Eş.');
+    expect(t('Mutter', 'Halbbruder')).toBe('Mutter, Halbbruder için: Üvey anne.');
+  });
+
+  it('nutzt Ağabey und Abla, wenn das Alter bekannt ist', () => {
+    const aged: FamilyData = {
+      ...data,
+      persons: data.persons.map((p) =>
+        p.id === 'Schwester' ? { ...p, birth_date: '1980-01-01' } : p.id === 'Ich' ? { ...p, birth_date: '1985-01-01' } : p,
+      ),
+    };
+    expect(describeKinship(aged, 'Schwester', 'Ich', 'tr').sentence).toBe('Schwester, Ich için: Abla.');
+  });
+});

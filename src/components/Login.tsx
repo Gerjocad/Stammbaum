@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from 'react';
+import { useLang } from '../i18n';
+import { Settings } from './Settings';
 
 export function Login({ onSignIn }: { onSignIn: (email: string) => Promise<void> }) {
+  const { t } = useLang();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -14,7 +17,7 @@ export function Login({ onSignIn }: { onSignIn: (email: string) => Promise<void>
     } catch (err) {
       setError(
         err instanceof Error && /signups? not allowed|not found/i.test(err.message)
-          ? 'Diese E-Mail-Adresse ist noch nicht freigeschaltet. Bitte frag die Verwalterin des Stammbaums nach einer Einladung.'
+          ? t.notInvited
           : err instanceof Error
             ? err.message
             : String(err),
@@ -24,20 +27,21 @@ export function Login({ onSignIn }: { onSignIn: (email: string) => Promise<void>
 
   return (
     <div className="login">
+      <Settings />
       <form className="panel" onSubmit={submit}>
-        <h1>Unser Stammbaum</h1>
+        <h1>{t.appTitle}</h1>
         {sent ? (
-          <p>Wir haben dir einen Anmeldelink an {email} geschickt. Öffne ihn auf diesem Gerät.</p>
+          <p>{t.linkSent(email)}</p>
         ) : (
           <>
-            <p>Melde dich mit deiner E-Mail-Adresse an. Du bekommst einen Link, mit dem du ohne Passwort hineinkommst.</p>
+            <p>{t.loginIntro}</p>
             <label>
-              E-Mail
+              {t.email}
               <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoFocus />
             </label>
             {error && <p className="error">{error}</p>}
             <div className="actions">
-              <button type="submit">Anmeldelink schicken</button>
+              <button type="submit">{t.sendLink}</button>
             </div>
           </>
         )}
