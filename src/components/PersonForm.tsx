@@ -5,17 +5,19 @@ import { CropDialog } from './CropDialog';
 
 interface Props {
   initial?: Person;
+  /** Vorauswahl für neue Personen, z. B. das andere Geschlecht beim Hinzufügen eines Partners. */
+  defaultGender?: Gender;
   title: string;
   onSave: (person: NewPerson & { id?: string }, photo: Blob | null) => Promise<void>;
   onCancel: () => void;
 }
 
-export function PersonForm({ initial, title, onSave, onCancel }: Props) {
+export function PersonForm({ initial, defaultGender, title, onSave, onCancel }: Props) {
   const { t } = useLang();
   const [firstName, setFirstName] = useState(initial?.first_name ?? '');
   const [lastName, setLastName] = useState(initial?.last_name ?? '');
   const [birthName, setBirthName] = useState(initial?.birth_name ?? '');
-  const [gender, setGender] = useState<Gender>(initial?.gender ?? 'w');
+  const [gender, setGender] = useState<Gender>(initial?.gender ?? defaultGender ?? 'w');
   const [birth, setBirth] = useState(initial?.birth_date ?? '');
   const [death, setDeath] = useState(initial?.death_date ?? '');
   const [notes, setNotes] = useState(initial?.notes ?? '');
@@ -115,14 +117,27 @@ export function PersonForm({ initial, title, onSave, onCancel }: Props) {
         {t.birthName}
         <input value={birthName} onChange={(e) => setBirthName(e.target.value)} />
       </label>
-      <label>
-        {t.gender}
-        <select value={gender} onChange={(e) => setGender(e.target.value as Gender)}>
-          <option value="w">{t.female}</option>
-          <option value="m">{t.male}</option>
-          <option value="d">{t.diverse}</option>
-        </select>
-      </label>
+      <fieldset className="gender">
+        <legend>{t.gender}</legend>
+        {(
+          [
+            ['w', t.female],
+            ['m', t.male],
+            ['d', t.diverse],
+          ] as const
+        ).map(([value, label]) => (
+          <label key={value} className={`g-${value}`}>
+            <input
+              type="radio"
+              name="gender"
+              value={value}
+              checked={gender === value}
+              onChange={() => setGender(value)}
+            />
+            {label}
+          </label>
+        ))}
+      </fieldset>
       <div className="two">
         <label>
           {t.birthDate}
