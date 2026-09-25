@@ -17,7 +17,7 @@ const de = {
 
   // Baum
   emptyTitle: 'Noch keine Personen eingetragen.',
-  emptyHint: 'Beginne mit „Person hinzufügen“, zum Beispiel mit dir selbst.',
+  emptyHint: 'Tippe oben rechts auf das Symbol mit dem Plus, um die erste Person anzulegen, zum Beispiel dich selbst.',
   zoomOut: 'Verkleinern',
   zoomIn: 'Vergrößern',
 
@@ -106,7 +106,7 @@ const tr: Strings = {
   language: 'Dil',
 
   emptyTitle: 'Henüz kimse eklenmedi.',
-  emptyHint: '“Kişi ekle” ile başla, örneğin kendinle.',
+  emptyHint: 'İlk kişiyi eklemek için sağ üstteki artı işaretli simgeye dokun, örneğin kendinle başla.',
   zoomOut: 'Uzaklaştır',
   zoomIn: 'Yakınlaştır',
 

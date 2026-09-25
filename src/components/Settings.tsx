@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLang, type Lang } from '../i18n';
+import { MoonIcon, SunIcon } from './Icons';
 
 type Theme = 'light' | 'dark';
 const THEME_KEY = 'stammbaum-theme';
@@ -36,8 +37,8 @@ export function Settings() {
   return (
     <div className="settings">
       <select aria-label={t.language} value={lang} onChange={(e) => setLang(e.target.value as Lang)}>
-        <option value="de">Deutsch</option>
-        <option value="tr">Türkçe</option>
+        <option value="de">DE</option>
+        <option value="tr">TR</option>
       </select>
       <button
         className="secondary icon"
@@ -45,7 +46,7 @@ export function Settings() {
         aria-label={theme === 'dark' ? t.lightMode : t.darkMode}
         title={theme === 'dark' ? t.lightMode : t.darkMode}
       >
-        {theme === 'dark' ? '☀' : '☾'}
+        {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
       </button>
     </div>
   );

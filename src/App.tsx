@@ -3,6 +3,7 @@ import { KinshipPanel } from './components/KinshipPanel';
 import { Login } from './components/Login';
 import { PersonDetails, type RelationKind } from './components/PersonDetails';
 import { PersonForm } from './components/PersonForm';
+import { KinshipIcon, LogOutIcon, UserPlusIcon } from './components/Icons';
 import { Settings } from './components/Settings';
 import { Tree } from './components/Tree';
 import { useLang, type Strings } from './i18n';
@@ -191,16 +192,29 @@ export default function App() {
       <header>
         <h1>{t.appTitle}</h1>
         <div className="header-actions">
-          <button onClick={() => setPanel({ kind: 'new' })}>{t.addPerson}</button>
-          <button className="secondary" onClick={() => setPanel({ kind: 'kinship' })} disabled={data.persons.length < 2}>
-            {t.kinship}
+          <button className="icon" onClick={() => setPanel({ kind: 'new' })} title={t.addPerson} aria-label={t.addPerson}>
+            <UserPlusIcon />
           </button>
+          <button
+            className="secondary icon"
+            onClick={() => setPanel({ kind: 'kinship' })}
+            disabled={data.persons.length < 2}
+            title={t.kinship}
+            aria-label={t.kinship}
+          >
+            <KinshipIcon />
+          </button>
+          <Settings />
           {store.mode === 'supabase' && (
-            <button className="link" onClick={() => store.signOut()} title={email}>
-              {t.signOut}
+            <button
+              className="secondary icon"
+              onClick={() => store.signOut()}
+              title={`${t.signOut} (${email})`}
+              aria-label={t.signOut}
+            >
+              <LogOutIcon />
             </button>
           )}
-          <Settings />
         </div>
       </header>
       {store.mode === 'local' && (
