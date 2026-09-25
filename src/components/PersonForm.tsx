@@ -1,11 +1,12 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { errorText, useLang } from '../i18n';
 import type { Gender, NewPerson, Person } from '../types';
+import { CropDialog } from './CropDialog';
 
 interface Props {
   initial?: Person;
   title: string;
-  onSave: (person: NewPerson & { id?: string }, photo: File | null) => Promise<void>;
+  onSave: (person: NewPerson & { id?: string }, photo: Blob | null) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -18,12 +19,17 @@ export function PersonForm({ initial, title, onSave, onCancel }: Props) {
   const [birth, setBirth] = useState(initial?.birth_date ?? '');
   const [death, setDeath] = useState(initial?.death_date ?? '');
   const [notes, setNotes] = useState(initial?.notes ?? '');
-  const [photo, setPhoto] = useState<File | null>(null);
+  const [photo, setPhoto] = useState<Blob | null>(null);
+  const [toCrop, setToCrop] = useState<File | null>(null);
   const [removePhoto, setRemovePhoto] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const preview = photo ? URL.createObjectURL(photo) : removePhoto ? null : initial?.photo_url ?? null;
+  const photoUrl = useMemo(() => (photo ? URL.createObjectURL(photo) : null), [photo]);
+  useEffect(() => () => {
+    if (photoUrl) URL.revokeObjectURL(photoUrl);
+  }, [photoUrl]);
+  const preview = photoUrl ?? (removePhoto ? null : initial?.photo_url ?? null);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -54,6 +60,17 @@ export function PersonForm({ initial, title, onSave, onCancel }: Props) {
 
   return (
     <form className="panel form" onSubmit={submit}>
+      {toCrop && (
+        <CropDialog
+          file={toCrop}
+          onCancel={() => setToCrop(null)}
+          onDone={(cropped) => {
+            setPhoto(cropped);
+            setRemovePhoto(false);
+            setToCrop(null);
+          }}
+        />
+      )}
       <h2>{title}</h2>
       <div className="photo-row">
         <div className="avatar big">{preview ? <img src={preview} alt="" /> : <span>?</span>}</div>
@@ -65,8 +82,10 @@ export function PersonForm({ initial, title, onSave, onCancel }: Props) {
               accept="image/*"
               hidden
               onChange={(e) => {
-                setPhoto(e.target.files?.[0] ?? null);
-                setRemovePhoto(false);
+                const file = e.target.files?.[0];
+                // Zurücksetzen, damit dieselbe Datei erneut gewählt werden kann.
+                e.target.value = '';
+                if (file) setToCrop(file);
               }}
             />
           </label>

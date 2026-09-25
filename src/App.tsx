@@ -7,7 +7,6 @@ import { CloseIcon, KinshipIcon, LogOutIcon, UserPlusIcon } from './components/I
 import { Settings } from './components/Settings';
 import { Tree } from './components/Tree';
 import { errorText, useLang, type Strings } from './i18n';
-import { resizeImage } from './image';
 import { buildGraph, isAncestor } from './kinship';
 import { createStore } from './store';
 import { fullName, type FamilyData, type NewPerson, type NewRelationship } from './types';
@@ -109,8 +108,9 @@ export default function App() {
     setPanel({ kind: 'view', id });
   }
 
-  async function savePerson(person: NewPerson & { id?: string }, photo: File | null) {
-    if (photo) person.photo_url = await store.uploadPhoto(await resizeImage(photo));
+  async function savePerson(person: NewPerson & { id?: string }, photo: Blob | null) {
+    // Das Foto ist bereits zugeschnitten und verkleinert (siehe CropDialog).
+    if (photo) person.photo_url = await store.uploadPhoto(photo);
     const saved = await store.savePerson(person);
     if (panel.kind === 'new' && panel.linkTo) {
       const rel = toRelationship(panel.linkTo.relation, panel.linkTo.personId, saved.id);

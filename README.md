@@ -37,7 +37,7 @@ Für die lokale Entwicklung mit echten Daten `.env.example` nach `.env` kopieren
 
 ## Gut zu wissen
 
-- Fotos werden vor dem Hochladen auf 600 Pixel verkleinert. Sie liegen unter einer zufälligen Adresse, die nur kennt, wer eingeloggt ist, sind aber technisch ohne Login abrufbar, wenn jemand die Adresse hat.
+- Fotos können nach dem Auswählen quadratisch zugeschnitten werden und werden vor dem Hochladen auf höchstens 600 Pixel verkleinert. Sie liegen unter einer zufälligen Adresse, die nur kennt, wer eingeloggt ist, sind aber technisch ohne Login abrufbar, wenn jemand die Adresse hat.
 - Jede Person kann höchstens zwei Elternteile haben, und niemand kann sein eigener Vorfahre werden.
 - GitHub Pages ist für öffentliche Repositories kostenlos. Die Familiendaten liegen nicht im Repository, sondern bei Supabase.
 
