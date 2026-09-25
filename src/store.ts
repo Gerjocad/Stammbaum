@@ -1,0 +1,180 @@
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { FamilyData, NewPerson, NewRelationship, Person, Relationship } from './types';
+
+/**
+ * Datenablage. Mit gesetzten VITE_SUPABASE_*-Variablen landen Personen, Beziehungen
+ * und Fotos in Supabase und sind für alle eingeloggten Familienmitglieder gleich.
+ * Ohne diese Variablen läuft die App im Demo-Modus und speichert nur im Browser.
+ */
+export interface Store {
+  mode: 'supabase' | 'local';
+  load(): Promise<FamilyData>;
+  savePerson(person: NewPerson & { id?: string }): Promise<Person>;
+  deletePerson(id: string): Promise<void>;
+  addRelationship(rel: NewRelationship): Promise<Relationship>;
+  deleteRelationship(id: string): Promise<void>;
+  /** Lädt ein (bereits verkleinertes) Foto hoch und gibt die Bild-URL zurück. */
+  uploadPhoto(blob: Blob): Promise<string>;
+  getUserEmail(): Promise<string | null>;
+  signIn(email: string): Promise<void>;
+  signOut(): Promise<void>;
+  onAuthChange(cb: () => void): () => void;
+}
+
+const PHOTO_BUCKET = 'photos';
+
+class SupabaseStore implements Store {
+  mode = 'supabase' as const;
+  constructor(private db: SupabaseClient) {}
+
+  async load(): Promise<FamilyData> {
+    const [persons, relationships] = await Promise.all([
+      this.db.from('persons').select('*').order('birth_date', { ascending: true, nullsFirst: false }),
+      this.db.from('relationships').select('*'),
+    ]);
+    if (persons.error) throw persons.error;
+    if (relationships.error) throw relationships.error;
+    return { persons: persons.data as Person[], relationships: relationships.data as Relationship[] };
+  }
+
+  async savePerson(person: NewPerson & { id?: string }): Promise<Person> {
+    const { data, error } = person.id
+      ? await this.db.from('persons').update(person).eq('id', person.id).select().single()
+      : await this.db.from('persons').insert(person).select().single();
+    if (error) throw error;
+    return data as Person;
+  }
+
+  async deletePerson(id: string): Promise<void> {
+    const { error } = await this.db.from('persons').delete().eq('id', id);
+    if (error) throw error;
+  }
+
+  async addRelationship(rel: NewRelationship): Promise<Relationship> {
+    const { data, error } = await this.db.from('relationships').insert(rel).select().single();
+    if (error) throw error;
+    return data as Relationship;
+  }
+
+  async deleteRelationship(id: string): Promise<void> {
+    const { error } = await this.db.from('relationships').delete().eq('id', id);
+    if (error) throw error;
+  }
+
+  async uploadPhoto(blob: Blob): Promise<string> {
+    const path = `${crypto.randomUUID()}.jpg`;
+    const { error } = await this.db.storage
+      .from(PHOTO_BUCKET)
+      .upload(path, blob, { contentType: 'image/jpeg' });
+    if (error) throw error;
+    return this.db.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
+  }
+
+  async getUserEmail(): Promise<string | null> {
+    const { data } = await this.db.auth.getSession();
+    return data.session?.user.email ?? null;
+  }
+
+  async signIn(email: string): Promise<void> {
+    const { error } = await this.db.auth.signInWithOtp({
+      email,
+      // Nur eingeladene Familienmitglieder dürfen sich anmelden.
+      options: { shouldCreateUser: false, emailRedirectTo: window.location.href.split('#')[0] },
+    });
+    if (error) throw error;
+  }
+
+  async signOut(): Promise<void> {
+    await this.db.auth.signOut();
+  }
+
+  onAuthChange(cb: () => void): () => void {
+    const { data } = this.db.auth.onAuthStateChange(() => cb());
+    return () => data.subscription.unsubscribe();
+  }
+}
+
+const LOCAL_KEY = 'stammbaum-demo';
+
+class LocalStore implements Store {
+  mode = 'local' as const;
+
+  private read(): FamilyData {
+    try {
+      const raw = localStorage.getItem(LOCAL_KEY);
+      if (raw) return JSON.parse(raw) as FamilyData;
+    } catch {
+      // Speicher nicht verfügbar: mit leerem Stammbaum weitermachen.
+    }
+    return { persons: [], relationships: [] };
+  }
+
+  private write(data: FamilyData) {
+    try {
+      localStorage.setItem(LOCAL_KEY, JSON.stringify(data));
+    } catch (e) {
+      // Die Oberfläche übersetzt diesen Code in eine verständliche Meldung.
+      throw new Error('storage-full', { cause: e });
+    }
+  }
+
+  async load(): Promise<FamilyData> {
+    return this.read();
+  }
+
+  async savePerson(person: NewPerson & { id?: string }): Promise<Person> {
+    const data = this.read();
+    const saved: Person = { ...person, id: person.id ?? crypto.randomUUID() };
+    const idx = data.persons.findIndex((p) => p.id === saved.id);
+    if (idx >= 0) data.persons[idx] = saved;
+    else data.persons.push(saved);
+    this.write(data);
+    return saved;
+  }
+
+  async deletePerson(id: string): Promise<void> {
+    const data = this.read();
+    data.persons = data.persons.filter((p) => p.id !== id);
+    data.relationships = data.relationships.filter((r) => r.person_a !== id && r.person_b !== id);
+    this.write(data);
+  }
+
+  async addRelationship(rel: NewRelationship): Promise<Relationship> {
+    const data = this.read();
+    const saved = { ...rel, id: crypto.randomUUID() };
+    data.relationships.push(saved);
+    this.write(data);
+    return saved;
+  }
+
+  async deleteRelationship(id: string): Promise<void> {
+    const data = this.read();
+    data.relationships = data.relationships.filter((r) => r.id !== id);
+    this.write(data);
+  }
+
+  uploadPhoto(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async getUserEmail(): Promise<string | null> {
+    return 'demo';
+  }
+  async signIn(): Promise<void> {}
+  async signOut(): Promise<void> {}
+  onAuthChange(): () => void {
+    return () => {};
+  }
+}
+
+export function createStore(): Store {
+  const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+  if (url && key) return new SupabaseStore(createClient(url, key));
+  return new LocalStore();
+}
