@@ -6,7 +6,7 @@ import { PersonForm } from './components/PersonForm';
 import { CloseIcon, KinshipIcon, LogOutIcon, UserPlusIcon } from './components/Icons';
 import { Settings } from './components/Settings';
 import { Tree } from './components/Tree';
-import { useLang, type Strings } from './i18n';
+import { errorText, useLang, type Strings } from './i18n';
 import { resizeImage } from './image';
 import { buildGraph, isAncestor } from './kinship';
 import { createStore } from './store';
@@ -43,14 +43,6 @@ function validate(data: FamilyData, rel: NewRelationship, t: Strings): string | 
       return t.errCycle;
   }
   return null;
-}
-
-/** Übersetzt technische Fehlercodes aus Speicher und Bildverarbeitung. */
-function errorText(err: unknown, t: Strings): string {
-  const msg = err instanceof Error ? err.message : String(err);
-  if (msg === 'storage-full') return t.errStorageFull;
-  if (msg === 'image-failed') return t.errImage;
-  return msg;
 }
 
 export default function App() {

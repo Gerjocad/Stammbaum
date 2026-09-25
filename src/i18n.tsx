@@ -47,6 +47,8 @@ const de = {
   errDeathBeforeBirth: 'Das Todesdatum liegt vor dem Geburtsdatum.',
   errImage: 'Bild konnte nicht verarbeitet werden.',
   errStorageFull: 'Der Browser-Speicher ist voll. Bitte kleinere Fotos verwenden.',
+  errSchemaOutdated:
+    'Die Datenbank ist noch nicht auf dem neuesten Stand. Bitte in Supabase im SQL Editor die Zeilen am Ende von supabase/schema.sql ausführen.',
 
   // Personenansicht
   born: 'Geboren',
@@ -137,6 +139,8 @@ const tr: Strings = {
   errDeathBeforeBirth: 'Ölüm tarihi doğum tarihinden önce.',
   errImage: 'Fotoğraf işlenemedi.',
   errStorageFull: 'Tarayıcı belleği dolu. Lütfen daha küçük fotoğraflar kullanın.',
+  errSchemaOutdated:
+    'Veritabanı güncel değil. Lütfen Supabase SQL Editor’de supabase/schema.sql dosyasının sonundaki satırları çalıştırın.',
 
   born: 'Doğum',
   died: 'Ölüm',
@@ -218,4 +222,18 @@ export function LangProvider({ children }: { children: ReactNode }) {
 
 export function useLang() {
   return useContext(Ctx);
+}
+
+/** Macht aus einem beliebigen Fehler eine verständliche Meldung in der gewählten Sprache. */
+export function errorText(err: unknown, t: Strings): string {
+  const msg =
+    err instanceof Error
+      ? err.message
+      : typeof err === 'object' && err && 'message' in err
+        ? String((err as { message: unknown }).message)
+        : String(err);
+  if (msg === 'storage-full') return t.errStorageFull;
+  if (msg === 'image-failed') return t.errImage;
+  if (msg === 'schema-outdated') return t.errSchemaOutdated;
+  return msg;
 }

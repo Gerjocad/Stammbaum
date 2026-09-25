@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useLang } from '../i18n';
+import { errorText, useLang } from '../i18n';
 import type { Gender, NewPerson, Person } from '../types';
 
 interface Props {
@@ -47,7 +47,7 @@ export function PersonForm({ initial, title, onSave, onCancel }: Props) {
         photo,
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorText(err, t));
       setBusy(false);
     }
   }

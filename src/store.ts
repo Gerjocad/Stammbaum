@@ -23,6 +23,19 @@ export interface Store {
 
 const PHOTO_BUCKET = 'photos';
 
+/**
+ * Supabase liefert Datenbankfehler als einfache Objekte statt als Error.
+ * Hier wird daraus ein echter Error mit lesbarer Meldung; eine fehlende Spalte
+ * bekommt einen eigenen Code, damit die Oberfläche erklären kann, was zu tun ist.
+ */
+export function toError(error: { message?: string; code?: string }): Error {
+  const msg = error.message ?? JSON.stringify(error);
+  if (error.code === 'PGRST204' || /column .* (does not exist|in the schema cache)/i.test(msg)) {
+    return new Error('schema-outdated', { cause: error });
+  }
+  return new Error(msg, { cause: error });
+}
+
 class SupabaseStore implements Store {
   mode = 'supabase' as const;
   constructor(private db: SupabaseClient) {}
@@ -32,8 +45,8 @@ class SupabaseStore implements Store {
       this.db.from('persons').select('*').order('birth_date', { ascending: true, nullsFirst: false }),
       this.db.from('relationships').select('*'),
     ]);
-    if (persons.error) throw persons.error;
-    if (relationships.error) throw relationships.error;
+    if (persons.error) throw toError(persons.error);
+    if (relationships.error) throw toError(relationships.error);
     return { persons: persons.data as Person[], relationships: relationships.data as Relationship[] };
   }
 
@@ -41,24 +54,24 @@ class SupabaseStore implements Store {
     const { data, error } = person.id
       ? await this.db.from('persons').update(person).eq('id', person.id).select().single()
       : await this.db.from('persons').insert(person).select().single();
-    if (error) throw error;
+    if (error) throw toError(error);
     return data as Person;
   }
 
   async deletePerson(id: string): Promise<void> {
     const { error } = await this.db.from('persons').delete().eq('id', id);
-    if (error) throw error;
+    if (error) throw toError(error);
   }
 
   async addRelationship(rel: NewRelationship): Promise<Relationship> {
     const { data, error } = await this.db.from('relationships').insert(rel).select().single();
-    if (error) throw error;
+    if (error) throw toError(error);
     return data as Relationship;
   }
 
   async deleteRelationship(id: string): Promise<void> {
     const { error } = await this.db.from('relationships').delete().eq('id', id);
-    if (error) throw error;
+    if (error) throw toError(error);
   }
 
   async uploadPhoto(blob: Blob): Promise<string> {
@@ -66,7 +79,7 @@ class SupabaseStore implements Store {
     const { error } = await this.db.storage
       .from(PHOTO_BUCKET)
       .upload(path, blob, { contentType: 'image/jpeg' });
-    if (error) throw error;
+    if (error) throw toError(error);
     return this.db.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
   }
 
@@ -81,7 +94,7 @@ class SupabaseStore implements Store {
       // Nur eingeladene Familienmitglieder dürfen sich anmelden.
       options: { shouldCreateUser: false, emailRedirectTo: window.location.href.split('#')[0] },
     });
-    if (error) throw error;
+    if (error) throw toError(error);
   }
 
   async signOut(): Promise<void> {

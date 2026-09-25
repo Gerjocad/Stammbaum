@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLang, type Strings } from '../i18n';
+import { errorText, useLang, type Strings } from '../i18n';
 import { fullName, lifeSpan, type FamilyData, type Person, type Relationship } from '../types';
 
 export type RelationKind = 'parent' | 'child' | 'partner';
@@ -56,7 +56,7 @@ export function PersonDetails({ person, data, onEdit, onDelete, onSelect, onAddN
       await onLink(linkKind, linkId);
       setLinkId('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorText(err, t));
     }
   }
 
