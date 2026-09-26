@@ -5,15 +5,19 @@ import { fullName, lifeSpan, type FamilyData } from '../types';
 
 const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 2.5;
+/** Anzahl der Linienfarben in styles.css (--fam-0 …). */
+const FAMILY_COLORS = 8;
 
 interface Props {
   data: FamilyData;
   selectedId: string | null;
   marked: string[];
   onSelect: (id: string) => void;
+  /** Doppelklick auf eine Person: nur ihren Stammbaum zeigen. */
+  onFocus: (id: string) => void;
 }
 
-export function Tree({ data, selectedId, marked, onSelect }: Props) {
+export function Tree({ data, selectedId, marked, onSelect, onFocus }: Props) {
   const layout = useMemo(() => computeLayout(data), [data]);
   const [zoom, setZoom] = useState(1);
   const { t } = useLang();
@@ -144,6 +148,20 @@ export function Tree({ data, selectedId, marked, onSelect }: Props) {
     const el = scrollRef.current;
     zoomAt(zoomRef.current * factor, (el?.clientWidth ?? 0) / 2, (el?.clientHeight ?? 0) / 2);
   };
+  // Doppelklick bzw. Doppeltippen selbst erkennen: Der erste Klick öffnet die Personenansicht,
+  // wodurch sich der Baum verschieben kann und ein echtes dblclick-Ereignis verloren ginge.
+  const lastClick = useRef<{ id: string; at: number } | null>(null);
+  const click = (id: string) => {
+    const now = Date.now();
+    const last = lastClick.current;
+    if (last && last.id === id && now - last.at < 450) {
+      lastClick.current = null;
+      onFocus(id);
+    } else {
+      lastClick.current = { id, at: now };
+      onSelect(id);
+    }
+  };
   const byId = useMemo(() => new Map(data.persons.map((p) => [p.id, p])), [data]);
 
   if (!layout.nodes.length) {
@@ -173,9 +191,18 @@ export function Tree({ data, selectedId, marked, onSelect }: Props) {
         >
           <div style={{ transform: `scale(${zoom})`, transformOrigin: '0 0', width: layout.width, height: layout.height, position: 'relative' }}>
             <svg width={layout.width} height={layout.height} className="lines">
-              {layout.lines.map((l, i) => (
-                <path key={i} d={l.d} className={`line-${l.kind}`} strokeDasharray={l.dashed ? '6 5' : undefined} />
-              ))}
+              {layout.lines.map((l, i) => {
+                const cls = [`line-${l.kind}`];
+                if (l.family !== undefined) cls.push(`fam-${l.family % FAMILY_COLORS}`);
+                if (selectedId && l.people.includes(selectedId)) cls.push('active');
+                return (
+                  <g key={i}>
+                    {/* Heller Rand, damit sich kreuzende Linien sichtbar übereinander laufen. */}
+                    {l.kind === 'child' && <path d={l.d} className="line-halo" />}
+                    <path d={l.d} className={cls.join(' ')} strokeDasharray={l.dashed ? '6 5' : undefined} />
+                  </g>
+                );
+              })}
             </svg>
             {layout.nodes.map((n) => {
               const p = byId.get(n.id)!;
@@ -188,7 +215,8 @@ export function Tree({ data, selectedId, marked, onSelect }: Props) {
                   key={n.id}
                   className={cls.join(' ')}
                   style={{ left: n.x, top: n.y, width: CARD_W, height: CARD_H }}
-                  onClick={() => onSelect(n.id)}
+                  onClick={() => click(n.id)}
+                  title={t.doubleClickHint}
                 >
                   <div className="avatar">
                     {p.photo_url ? <img src={p.photo_url} alt="" /> : <span>{initials(p.first_name, p.last_name)}</span>}

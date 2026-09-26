@@ -20,6 +20,7 @@ interface Props {
   /** false = nur ansehen */
   canEdit: boolean;
   onEdit: () => void;
+  onShowLineage: () => void;
   onDelete: () => void;
   onSelect: (id: string) => void;
   onAddNew: (kind: RelationKind) => void;
@@ -40,7 +41,7 @@ function relationsOf(person: Person, data: FamilyData) {
   return out;
 }
 
-export function PersonDetails({ person, data, canEdit, onEdit, onDelete, onSelect, onAddNew, onLink, onUnlink }: Props) {
+export function PersonDetails({ person, data, canEdit, onEdit, onShowLineage, onDelete, onSelect, onAddNew, onLink, onUnlink }: Props) {
   const { t } = useLang();
   const LABELS = labels(t);
   const relations = relationsOf(person, data);
@@ -91,11 +92,12 @@ export function PersonDetails({ person, data, canEdit, onEdit, onDelete, onSelec
         )}
       </dl>
       {person.notes && <p className="notes">{person.notes}</p>}
-      {canEdit && (
-        <div className="actions">
-          <button onClick={onEdit}>{t.edit}</button>
-        </div>
-      )}
+      <div className="actions">
+        {canEdit && <button onClick={onEdit}>{t.edit}</button>}
+        <button className="secondary" onClick={onShowLineage}>
+          {t.showLineage}
+        </button>
+      </div>
 
       {KINDS.map((kind) => (
         <section key={kind}>

@@ -17,7 +17,11 @@ export interface NodePos {
 export interface Line {
   d: string; // SVG-Pfad
   kind: 'partner' | 'child';
+  /** Die verbundenen Personen (zum Hervorheben der Linien einer ausgewählten Person). */
+  people: string[];
   dashed?: boolean;
+  /** Farbnummer, wenn sich diese Linie mit anderen überlagert. */
+  family?: number;
 }
 
 export interface Layout {
@@ -34,7 +38,7 @@ function byBirth(g: Graph) {
     (g.byId.get(a)!.birth_date ?? '9999').localeCompare(g.byId.get(b)!.birth_date ?? '9999');
 }
 
-/** Generation je Person: Kinder eine Zeile unter den Eltern, Partner in derselben Zeile. */
+/** Generation je Person: Kinder eine Zeile unter den Eltern, Partner und Geschwister in derselben Zeile. */
 function generations(g: Graph): Map<string, number> {
   const ids = [...g.byId.keys()];
   const gen = new Map(ids.map((id) => [id, 0]));
@@ -44,9 +48,12 @@ function generations(g: Graph): Map<string, number> {
     for (let i = 0, changed = true; changed && i < limit; i++) {
       changed = false;
       for (const id of ids) {
-        for (const c of g.children.get(id) ?? []) {
-          if (gen.get(c)! < gen.get(id)! + 1) {
-            gen.set(c, gen.get(id)! + 1);
+        // Geschwister stehen in derselben Zeile, eine unter den Eltern.
+        const kids = g.children.get(id) ?? [];
+        const row = Math.max(gen.get(id)! + 1, ...kids.map((c) => gen.get(c)!));
+        for (const c of kids) {
+          if (gen.get(c)! < row) {
+            gen.set(c, row);
             changed = true;
           }
         }
@@ -62,7 +69,7 @@ function generations(g: Graph): Map<string, number> {
 
   pushDown();
   // Personen ohne eingetragene Eltern (z. B. Schwiegereltern) direkt über ihre Kinder ziehen.
-  for (let round = 0; round < 3; round++) {
+  for (let round = 0; round < 5; round++) {
     let moved = false;
     for (const id of ids) {
       if ((g.parents.get(id) ?? []).length) continue;
@@ -309,19 +316,58 @@ export function computeLayout(data: FamilyData): Layout {
 
   // Zeilen ohne Lücken durchnummerieren.
   const rowIndex = new Map([...new Set(units.map((u) => u.row))].sort((a, b) => a - b).map((r, i) => [r, i]));
+  const rowOf = (id: string) => rowIndex.get(units[unitOf.get(id)!].row)!;
   const minX = Math.min(...[...g.byId.keys()].map(personX)) - CARD_W / 2;
   const shift = MARGIN - minX;
-  const top = (r: number) => MARGIN + r * (CARD_H + ROW_GAP);
-  const nodes: NodePos[] = [...g.byId.keys()].map((id) => ({
-    id,
-    x: personX(id) + shift - CARD_W / 2,
-    y: top(rowIndex.get(units[unitOf.get(id)!].row)!),
-  }));
-  const pos = new Map(nodes.map((n) => [n.id, n]));
-  const cx = (id: string) => pos.get(id)!.x + CARD_W / 2;
+  const cx = (id: string) => personX(id) + shift;
   const isPartner = (a: string, b: string) => (g.partners.get(a) ?? []).includes(b);
   const adjacent = (a: string, b: string) =>
-    pos.get(a)!.y === pos.get(b)!.y && Math.abs(cx(a) - cx(b)) <= CARD_W + PARTNER_GAP + 1;
+    rowOf(a) === rowOf(b) && Math.abs(cx(a) - cx(b)) <= CARD_W + PARTNER_GAP + 1;
+
+  // Eltern-Kind-Verbindungen, gebündelt je Elternpaar. Querlinien, die sich überlappen würden,
+  // bekommen eigene Höhen (Ebenen); der Zeilenabstand wächst mit der Zahl der Ebenen.
+  const families = new Map<string, string[]>();
+  for (const id of g.byId.keys()) {
+    const parents = g.parents.get(id) ?? [];
+    if (!parents.length) continue;
+    const key = [...parents].sort().join('|');
+    (families.get(key) ?? families.set(key, []).get(key)!).push(id);
+  }
+  const buses = [...families].map(([key, kids]) => {
+    const parents = key.split('|');
+    const sx = mean(parents.map(cx));
+    const xs = [sx, ...kids.map(cx)];
+    const row = Math.min(...kids.map(rowOf));
+    return { parents, kids, sx, row, from: Math.min(...xs), to: Math.max(...xs), level: 0, family: -1 };
+  });
+  const levelsInGap = new Map<number, number>();
+  const byRow = new Map<number, typeof buses>();
+  for (const b of buses) (byRow.get(b.row) ?? byRow.set(b.row, []).get(b.row)!).push(b);
+  let colored = 0;
+  for (const [row, group] of byRow) {
+    // Breite Querlinien zuerst nach außen (oben), damit kurze darunter liegen.
+    group.sort((a, b) => a.from - b.from || b.to - a.to);
+    const ends: number[] = [];
+    for (const b of group) {
+      let lvl = ends.findIndex((end) => end + 16 < b.from);
+      if (lvl < 0) lvl = ends.push(b.to) - 1;
+      else ends[lvl] = b.to;
+      b.level = lvl;
+    }
+    levelsInGap.set(row, ends.length);
+    // Nur Familien, deren Querlinie sich mit einer anderen überlagert, bekommen eigene Farben.
+    for (const b of group)
+      if (group.some((o) => o !== b && o.from < b.to + 16 && b.from < o.to + 16)) b.family = colored++;
+  }
+  const LEVEL_STEP = 18;
+  const gapAbove = (r: number) => Math.max(ROW_GAP, 40 + (levelsInGap.get(r) ?? 1) * LEVEL_STEP);
+  const tops: number[] = [];
+  for (let r = 0, y = MARGIN; r < rowIndex.size; r++) {
+    if (r > 0) y += CARD_H + gapAbove(r);
+    tops.push(y);
+  }
+  const nodes: NodePos[] = [...g.byId.keys()].map((id) => ({ id, x: cx(id) - CARD_W / 2, y: tops[rowOf(id)] }));
+  const pos = new Map(nodes.map((n) => [n.id, n]));
 
   const lines: Line[] = [];
 
@@ -335,13 +381,14 @@ export function computeLayout(data: FamilyData): Layout {
       const [l, r] = cx(a) < cx(b) ? [a, b] : [b, a];
       const y = pos.get(l)!.y + CARD_H / 2;
       if (adjacent(l, r)) {
-        lines.push({ kind: 'partner', d: `M ${cx(l) + CARD_W / 2} ${y} H ${cx(r) - CARD_W / 2}` });
+        lines.push({ kind: 'partner', people: [l, r], d: `M ${cx(l) + CARD_W / 2} ${y} H ${cx(r) - CARD_W / 2}` });
       } else {
         const y1 = pos.get(l)!.y;
         const y2 = pos.get(r)!.y;
         const lift = Math.min(y1, y2) - 25;
         lines.push({
           kind: 'partner',
+          people: [l, r],
           dashed: true,
           d: `M ${cx(l)} ${y1} C ${cx(l)} ${lift}, ${cx(r)} ${lift}, ${cx(r)} ${y2}`,
         });
@@ -349,46 +396,20 @@ export function computeLayout(data: FamilyData): Layout {
     }
   }
 
-  // Eltern-Kind-Linien, gebündelt je Elternpaar
-  const families = new Map<string, string[]>();
-  for (const id of g.byId.keys()) {
-    const parents = g.parents.get(id) ?? [];
-    if (!parents.length) continue;
-    const key = [...parents].sort().join('|');
-    (families.get(key) ?? families.set(key, []).get(key)!).push(id);
-  }
-  const buses = [...families].map(([key, kids]) => {
-    const parents = key.split('|');
-    const sx = mean(parents.map(cx));
+  for (const b of buses) {
+    const { parents, kids } = b;
     const pairOnLine = parents.length === 2 && isPartner(parents[0], parents[1]) && adjacent(parents[0], parents[1]);
     const sy = pairOnLine
       ? pos.get(parents[0])!.y + CARD_H / 2
       : Math.max(...parents.map((p) => pos.get(p)!.y)) + CARD_H;
-    const childTop = Math.min(...kids.map((k) => pos.get(k)!.y));
-    const xs = [sx, ...kids.map(cx)];
-    return { kids, sx, sy, childTop, from: Math.min(...xs), to: Math.max(...xs), level: 0, levels: 1 };
-  });
-  // Querlinien, die sich überlappen würden, auf verschiedene Höhen legen.
-  const byGap = new Map<number, typeof buses>();
-  for (const b of buses) (byGap.get(b.childTop) ?? byGap.set(b.childTop, []).get(b.childTop)!).push(b);
-  for (const group of byGap.values()) {
-    group.sort((a, b) => a.from - b.from);
-    const ends: number[] = [];
-    for (const b of group) {
-      let lvl = ends.findIndex((end) => end + 12 < b.from);
-      if (lvl < 0) lvl = ends.push(b.to) - 1;
-      else ends[lvl] = b.to;
-      b.level = lvl;
-    }
-    for (const b of group) b.levels = ends.length;
-  }
-  const step = Math.min(14, (ROW_GAP - 30) / 2);
-  for (const b of buses) {
-    const offset = (b.level - (b.levels - 1) / 2) * step;
-    const busY = b.childTop - ROW_GAP / 2 + Math.max(-ROW_GAP / 2 + 12, Math.min(ROW_GAP / 2 - 12, offset));
-    let d = `M ${b.sx} ${b.sy} V ${busY} M ${b.from} ${busY} H ${b.to}`;
-    for (const k of b.kids) d += ` M ${cx(k)} ${busY} V ${pos.get(k)!.y}`;
-    lines.push({ kind: 'child', d });
+    const childTop = tops[b.row];
+    const levels = levelsInGap.get(b.row) ?? 1;
+    const gapTop = childTop - gapAbove(b.row);
+    // Ebenen gleichmäßig im Zwischenraum verteilen, Ebene 0 oben.
+    const busY = gapTop + (gapAbove(b.row) - (levels - 1) * LEVEL_STEP) / 2 + b.level * LEVEL_STEP;
+    let d = `M ${b.sx} ${sy} V ${busY} M ${b.from} ${busY} H ${b.to}`;
+    for (const k of kids) d += ` M ${cx(k)} ${busY} V ${pos.get(k)!.y}`;
+    lines.push({ kind: 'child', people: [...parents, ...kids], d, family: b.family >= 0 ? b.family : undefined });
   }
 
   const width = Math.max(...nodes.map((n) => n.x)) + CARD_W + MARGIN;

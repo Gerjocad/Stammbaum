@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { describeKinship } from './kinship';
+import { sampleFamily } from './fixtures';
+import { describeKinship, lineage } from './kinship';
 import type { FamilyData, Gender, Person, Relationship } from './types';
 
 function person(id: string, gender: Gender): Person {
@@ -163,5 +164,12 @@ describe('describeKinship auf Türkisch', () => {
       ),
     };
     expect(describeKinship(aged, 'Schwester', 'Ich', 'tr').sentence).toBe('Schwester, Ich için: Abla.');
+  });
+});
+
+describe('lineage', () => {
+  it('behält Vorfahren, Nachkommen und deren Partner, blendet den Rest aus', () => {
+    const ids = lineage(sampleFamily(), 'Cemre').persons.map((p) => p.id).sort();
+    expect(ids).toEqual(['Ali', 'Cemre', 'Fatma', 'Hatice', 'Jonas', 'Mehmet', 'Mia', 'Osman', 'Zeynep']);
   });
 });

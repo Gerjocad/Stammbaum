@@ -8,6 +8,8 @@
   --accent-text: #ffffff;
   --danger: #b3261e;
   --line: #9c8f7e;
+  --fam-0: #3f7cac; --fam-1: #b5543c; --fam-2: #4d8b55; --fam-3: #8a5aa8;
+  --fam-4: #b07d12; --fam-5: #2f8f8f; --fam-6: #b24d7a; --fam-7: #6b6b2a;
   --m: #dbe7f3;
   --w: #f6dfe3;
   --d: #e9e4f2;
@@ -33,6 +35,10 @@
     --accent-text: #11140f;
     --danger: #f2877f;
     --line: #6f665b;
+  --fam-0: #7fb2dc; --fam-1: #e38b72; --fam-2: #86c08e; --fam-3: #bf95db;
+  --fam-4: #e0b458; --fam-5: #6cc6c6; --fam-6: #e28ab0; --fam-7: #c2c27a;
+    --fam-0: #7fb2dc; --fam-1: #e38b72; --fam-2: #86c08e; --fam-3: #bf95db;
+    --fam-4: #e0b458; --fam-5: #6cc6c6; --fam-6: #e28ab0; --fam-7: #c2c27a;
     --m: #2a3a4a;
     --w: #4a2f36;
     --d: #3a3348;
@@ -148,6 +154,16 @@ aside {
 .lines { position: absolute; left: 0; top: 0; }
 .lines path { fill: none; stroke: var(--line); stroke-width: 2; }
 .line-partner { stroke-width: 3 !important; }
+.lines path.line-halo { stroke: var(--bg); stroke-width: 7; }
+.lines path.fam-0 { stroke: var(--fam-0); }
+.lines path.fam-1 { stroke: var(--fam-1); }
+.lines path.fam-2 { stroke: var(--fam-2); }
+.lines path.fam-3 { stroke: var(--fam-3); }
+.lines path.fam-4 { stroke: var(--fam-4); }
+.lines path.fam-5 { stroke: var(--fam-5); }
+.lines path.fam-6 { stroke: var(--fam-6); }
+.lines path.fam-7 { stroke: var(--fam-7); }
+.lines path.active { stroke: var(--accent); stroke-width: 3.5; }
 
 .card {
   position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
