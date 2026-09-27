@@ -258,7 +258,10 @@ export default function App() {
   return (
     <div className="app">
       <header>
-        <h1>{t.appTitle}</h1>
+        <h1>
+          <span className="app-title">{t.appTitle}</span>
+          <span className="app-version">v{__APP_VERSION__}</span>
+        </h1>
         <div className="header-actions">
           {canEdit && (
             <button className="icon" onClick={() => toggle('new')} title={t.addPerson} aria-label={t.addPerson}>

@@ -120,6 +120,9 @@ header {
   padding: 6px 12px; background: var(--surface); border-bottom: 1px solid var(--border);
 }
 header h1 { font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+header h1:has(.app-version) { display: flex; align-items: baseline; gap: 6px; }
+.app-title { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.app-version { flex-shrink: 0; font-size: 0.7rem; font-weight: 400; opacity: 0.6; }
 .header-actions { display: flex; gap: 6px; align-items: center; flex: none; }
 .notice { padding: 8px 16px; background: var(--notice-bg); color: var(--notice-text); font-size: 0.9rem; }
 .notice.error { background: var(--error-bg); color: var(--error-text); cursor: pointer; }
