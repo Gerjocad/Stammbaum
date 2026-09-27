@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sampleFamily } from './fixtures';
+import { sampleFamily, tangledFamily } from './fixtures';
 import { CARD_W, computeLayout } from './layout';
 
 describe('computeLayout', () => {
@@ -38,5 +38,27 @@ describe('computeLayout', () => {
     for (const a of buses)
       for (const b of buses)
         if (a !== b && a.y === b.y) expect(a.to < b.from || b.to < a.from).toBe(true);
+  });
+});
+
+describe('computeLayout mit Verbindungen quer über den Baum', () => {
+  const layout = computeLayout(tangledFamily());
+  const pos = new Map(layout.nodes.map((n) => [n.id, n]));
+
+  it('stellt Geschwister in dieselbe Zeile, auch wenn eines eingeheiratet hat', () => {
+    expect(pos.get('Kerem')!.y).toBe(pos.get('Selin')!.y);
+    expect(pos.get('Ahmet')!.y).toBeLessThan(pos.get('Selin')!.y);
+  });
+
+  it('lässt keine Karten überlappen', () => {
+    for (const a of layout.nodes)
+      for (const b of layout.nodes)
+        if (a !== b && a.y === b.y) expect(Math.abs(a.x - b.x)).toBeGreaterThanOrEqual(CARD_W);
+  });
+
+  it('färbt nur Linien, die sich mit anderen überlagern', () => {
+    const colored = layout.lines.filter((l) => l.family !== undefined);
+    expect(colored.length).toBeGreaterThan(1);
+    expect(layout.lines.find((l) => l.kind === 'child' && l.people.includes('Mia'))!.family).toBeUndefined();
   });
 });

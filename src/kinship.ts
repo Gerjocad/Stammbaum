@@ -436,3 +436,27 @@ function shortestPath(g: Graph, a: string, b: string): string[] | null {
   while (prev.get(path[0])) path.unshift(prev.get(path[0])!);
   return path;
 }
+
+/**
+ * Der Stammbaum einer Person: sie selbst, alle Vorfahren und Nachkommen sowie die
+ * Partner:innen der Person und ihrer Nachkommen. Alle anderen werden ausgeblendet.
+ */
+export function lineage(data: FamilyData, id: string): FamilyData {
+  const g = buildGraph(data);
+  if (!g.byId.has(id)) return data;
+  const keep = new Set(ancestors(g, id).keys());
+  const down = [id];
+  for (let i = 0; i < down.length; i++) {
+    for (const c of g.children.get(down[i]) ?? []) {
+      if (!down.includes(c)) down.push(c);
+    }
+  }
+  for (const d of down) {
+    keep.add(d);
+    for (const p of g.partners.get(d) ?? []) keep.add(p);
+  }
+  return {
+    persons: data.persons.filter((p) => keep.has(p.id)),
+    relationships: data.relationships.filter((r) => keep.has(r.person_a) && keep.has(r.person_b)),
+  };
+}

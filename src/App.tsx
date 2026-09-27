@@ -10,6 +10,7 @@ import { Settings } from './components/Settings';
 import { Tree } from './components/Tree';
 import { errorText, useLang, type Strings } from './i18n';
 import { upcomingOccasions } from './dates';
+import { lineage } from './kinship';
 import { checkPersonDates, checkRelationship, suggestions, type Findings } from './checks';
 import { createStore } from './store';
 import { fullName, type FamilyData, type NewPerson, type NewRelationship, type Person, type Profile } from './types';
@@ -57,6 +58,8 @@ export default function App() {
   const [kinB, setKinB] = useState('');
   const [dismissed, setDismissed] = useState(loadDismissed);
   const [profile, setProfile] = useState<Profile | null>(null);
+  // Person, deren Stammbaum allein angezeigt wird (Doppelklick).
+  const [focusId, setFocusId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     try {
@@ -114,6 +117,7 @@ export default function App() {
   const isAdmin = profile.role === 'admin';
 
   const byId = new Map(data.persons.map((p) => [p.id, p]));
+  const focused = focusId ? byId.get(focusId) : undefined;
   const selectedId = panel.kind === 'view' || panel.kind === 'edit' ? panel.id : null;
 
   function selectInTree(id: string) {
@@ -192,6 +196,7 @@ export default function App() {
         data={data}
         canEdit={canEdit}
         onEdit={() => setPanel({ kind: 'edit', id: person.id })}
+        onShowLineage={() => setFocusId(person.id)}
         onSelect={(id) => setPanel({ kind: 'view', id })}
         onAddNew={(relation) => setPanel({ kind: 'new', linkTo: { relation, personId: person.id } })}
         onLink={async (relation, otherId) => {
@@ -296,6 +301,14 @@ export default function App() {
         </div>
       )}
       {!canEdit && <div className="notice">{t.viewerNotice}</div>}
+      {focused && (
+        <div className="notice suggestion">
+          <span>{t.lineageOnly(fullName(focused))}</span>
+          <button className="small" onClick={() => setFocusId(null)}>
+            {t.showAll}
+          </button>
+        </div>
+      )}
       {birthdaysToday.map((o) => (
         <div key={o.person.id} className="notice birthday">
           <CakeIcon /> {t.birthdayToday(fullName(o.person), o.years)}
@@ -324,7 +337,12 @@ export default function App() {
       )}
       <main className={side ? 'with-side' : ''}>
         <Tree
-          data={data}
+          key={focused?.id ?? 'all'}
+          data={focused ? lineage(data, focused.id) : data}
+          onFocus={(id) => {
+            setFocusId(id);
+            setPanel({ kind: 'view', id });
+          }}
           selectedId={selectedId}
           marked={panel.kind === 'kinship' ? [kinA, kinB].filter(Boolean) : []}
           onSelect={selectInTree}

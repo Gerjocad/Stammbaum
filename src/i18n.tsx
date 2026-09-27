@@ -20,6 +20,10 @@ const de = {
   emptyHint: 'Tippe oben rechts auf das Symbol mit dem Plus, um die erste Person anzulegen, zum Beispiel dich selbst.',
   zoomOut: 'Verkleinern',
   zoomIn: 'Vergrößern',
+  lineageOnly: (n: string) => `Nur der Stammbaum von ${n} wird angezeigt.`,
+  showAll: 'Alle anzeigen',
+  showLineage: 'Nur Stammbaum anzeigen',
+  doubleClickHint: 'Doppelklick: nur Stammbaum dieser Person anzeigen',
 
   // Formular
   newPerson: 'Neue Person',
@@ -162,6 +166,10 @@ const tr: Strings = {
   emptyHint: 'İlk kişiyi eklemek için sağ üstteki artı işaretli simgeye dokun, örneğin kendinle başla.',
   zoomOut: 'Uzaklaştır',
   zoomIn: 'Yakınlaştır',
+  lineageOnly: (n: string) => `Yalnızca ${n} kişisinin soy ağacı gösteriliyor.`,
+  showAll: 'Hepsini göster',
+  showLineage: 'Yalnızca soy ağacını göster',
+  doubleClickHint: 'Çift tıkla: yalnızca bu kişinin soy ağacını göster',
 
   newPerson: 'Yeni kişi',
   newParentOf: (n: string) => `${n} için yeni ebeveyn`,
