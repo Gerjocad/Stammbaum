@@ -31,6 +31,8 @@ jobs:
           # Unter Settings → Secrets and variables → Actions → Variables eintragen.
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          # Versionsnummer = PR-Nummer (auf main aus dem Merge-Commit gelesen).
+          APP_VERSION: ${{ github.event.pull_request.number }}
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name != 'pull_request'
         with:
