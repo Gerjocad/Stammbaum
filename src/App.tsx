@@ -338,6 +338,7 @@ export default function App() {
       <main className={side ? 'with-side' : ''}>
         <Tree
           key={focused?.id ?? 'all'}
+          centerId={focused?.id}
           data={focused ? lineage(data, focused.id) : data}
           onFocus={(id) => {
             setFocusId(id);

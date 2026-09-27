@@ -15,9 +15,11 @@ interface Props {
   onSelect: (id: string) => void;
   /** Doppelklick auf eine Person: nur ihren Stammbaum zeigen. */
   onFocus: (id: string) => void;
+  /** Person, die beim Anzeigen horizontal in die Mitte geholt wird (sonst die oberste Generation). */
+  centerId?: string;
 }
 
-export function Tree({ data, selectedId, marked, onSelect, onFocus }: Props) {
+export function Tree({ data, selectedId, marked, onSelect, onFocus, centerId }: Props) {
   const layout = useMemo(() => computeLayout(data), [data]);
   const [zoom, setZoom] = useState(1);
   const { t } = useLang();
@@ -27,6 +29,9 @@ export function Tree({ data, selectedId, marked, onSelect, onFocus }: Props) {
   // Nach einer Zoom-Änderung so scrollen, dass der Punkt unter den Fingern stehen bleibt.
   const anchor = useRef<{ x: number; y: number; cx: number; cy: number } | null>(null);
 
+  /** Seitlicher Freiraum (nur in der Stammbaum-Ansicht), damit jede Person in die Mitte scrollen kann. */
+  const padLeft = (el: HTMLElement) => parseFloat(getComputedStyle(el).paddingLeft) || 0;
+
   /** Zoomt auf `next`, wobei der Bildschirmpunkt (px, py) im Scrollbereich fest bleibt. */
   const zoomAt = (next: number, px: number, py: number) => {
     const el = scrollRef.current;
@@ -35,7 +40,7 @@ export function Tree({ data, selectedId, marked, onSelect, onFocus }: Props) {
     anchor.current = {
       x: px,
       y: py,
-      cx: (el.scrollLeft + px) / zoomRef.current,
+      cx: (el.scrollLeft + px - padLeft(el)) / zoomRef.current,
       cy: (el.scrollTop + py) / zoomRef.current,
     };
     zoomRef.current = z;
@@ -46,17 +51,19 @@ export function Tree({ data, selectedId, marked, onSelect, onFocus }: Props) {
     const el = scrollRef.current;
     const a = anchor.current;
     if (!el || !a) return;
-    el.scrollLeft = a.cx * zoom - a.x;
+    el.scrollLeft = a.cx * zoom - a.x + padLeft(el);
     el.scrollTop = a.cy * zoom - a.y;
     anchor.current = null;
   }, [zoom]);
 
   const hasNodes = layout.nodes.length > 0;
-  // Beim ersten Anzeigen die oberste Generation in die Mitte holen.
+  // Beim ersten Anzeigen die oberste Generation bzw. die gewählte Person in die Mitte holen.
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el || !hasNodes) return;
-    el.scrollLeft = layout.focusX * zoomRef.current - el.clientWidth / 2;
+    const node = centerId ? layout.nodes.find((n) => n.id === centerId) : undefined;
+    const x = node ? node.x + CARD_W / 2 : layout.focusX;
+    el.scrollLeft = padLeft(el) + x * zoomRef.current - el.clientWidth / 2;
   }, [hasNodes]);
   useEffect(() => {
     const el = scrollRef.current;
@@ -184,7 +191,7 @@ export function Tree({ data, selectedId, marked, onSelect, onFocus }: Props) {
           +
         </button>
       </div>
-      <div className="tree-scroll" ref={scrollRef}>
+      <div className={centerId ? 'tree-scroll centered' : 'tree-scroll'} ref={scrollRef}>
         <div
           className="tree"
           style={{ width: layout.width * zoom, height: layout.height * zoom }}
